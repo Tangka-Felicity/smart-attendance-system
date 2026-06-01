@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Smart Attendance",
+    "slug": "smart-attendance-mobile",
+    "version": "1.0.0",
+    "sdkVersion": "46.0.0",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "icon": "./assets/logo.jpeg",
+    "splash": {
+      "image": "./assets/full-logo.jpeg",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A56DB"
+    },
+    "android": {
+      "jsEngine": "hermes",
+      "package": "com.smartattendacesystem",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.jpeg",
+        "backgroundColor": "#1A56DB"
+      }
+    }
+  }
+}
