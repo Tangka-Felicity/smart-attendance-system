@@ -11,5 +11,3 @@ apscheduler==3.10.4
 pydantic-settings==2.1.0
 httpx==0.25.2
 python-dotenv==1.0.0
-Pillow==10.1.0
-openpyxl==3.1.2
