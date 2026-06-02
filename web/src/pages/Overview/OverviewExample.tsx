@@ -86,7 +86,6 @@ export const OverviewPage: React.FC = () => {
   return (
     <Layout
       user={{ name: 'Sarah Admin', role: 'SUPER_ADMIN' }}
-      unreadNotifications={2}
       onLogout={() => console.log('Logged out')}
     >
       <div className="space-y-6">
