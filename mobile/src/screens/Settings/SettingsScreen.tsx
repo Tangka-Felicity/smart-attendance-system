@@ -432,11 +432,11 @@ const SettingsScreen = () => {
           <>
             <TouchableOpacity
               onPress={() =>
-                navigation.navigate(
+                (navigation as any).navigate(
                   currentUser?.role === 'LECTURER' ? 'LecturerTabs' : 'StudentTabs',
                   {
                     screen: currentUser?.role === 'LECTURER' ? 'LecturerProfile' : 'ProfileTab',
-                  } as never
+                  }
                 )
               }
               style={{ paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}

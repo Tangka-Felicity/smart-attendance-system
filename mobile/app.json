@@ -1,26 +1,75 @@
 {
   "expo": {
     "name": "Smart Attendance",
-    "slug": "smart-attendance-mobile",
+    "slug": "smart-attendance-system",
     "version": "1.0.0",
-    "sdkVersion": "46.0.0",
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
-    "icon": "./assets/logo.jpeg",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/full-logo.jpeg",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#1A56DB"
     },
-    "android": {
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.smartattendance.uba",
+      "buildNumber": "1",
       "jsEngine": "hermes",
-      "package": "com.smartattendacesystem",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used for face verification and QR code scanning",
+        "NSLocationWhenInUseUsageDescription": "Used to verify you are at the session venue",
+        "NSMicrophoneUsageDescription": "Required by camera"
+      }
+    },
+    "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.jpeg",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1A56DB"
+      },
+      "package": "com.smartattendance.uba",
+      "versionCode": 1,
+      "jsEngine": "hermes",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-location",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#1A56DB",
+          "sounds": []
+        }
+      ],
+      [
+        "expo-barcode-scanner",
+        {
+          "cameraPermission": "Allow Smart Attendance to access camera."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "42f5d5ac-acc1-4e6d-8ce3-bb088facc8d0"
       }
     }
   }

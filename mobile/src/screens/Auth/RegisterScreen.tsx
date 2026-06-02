@@ -576,7 +576,7 @@ const RegisterScreen = () => {
                   >
                     <View
                       style={{
-                        width: passwordStrength.width,
+                        width: passwordStrength.width as any,
                         height: '100%',
                         backgroundColor: passwordStrength.color,
                       }}
@@ -707,7 +707,7 @@ const RegisterScreen = () => {
                           <Camera
                             ref={cameraRef}
                             style={{ flex: 1 }}
-                            type={Camera.Constants.Type.front}
+                            type={(Camera.Constants.Type as any).front}
                           />
                         </View>
                       )}

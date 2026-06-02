@@ -68,19 +68,19 @@ const FaceScreen = () => {
         })
       );
       setLoading(false);
-      navigation.navigate('Confirmed' as never, {
+      (navigation as any).navigate('Confirmed', {
         session,
         offline: true,
-      } as never);
+      });
       return;
     }
 
     try {
       const photoData = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: true });
-      const payloadWithPhoto = { ...payload, face_image: photoData.base64 };
+      const payloadWithPhoto = { ...payload, face_image: photoData.base64 ?? '' };
       const response = await attendanceApi.checkin(payloadWithPhoto);
       setLoading(false);
-      navigation.navigate('Confirmed' as never, {
+      (navigation as any).navigate('Confirmed', {
         session,
         offline: false,
         recordId: response.data?.record_id ?? response.data?.id,
@@ -127,7 +127,7 @@ const FaceScreen = () => {
 
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
         {isFocused ? (
-          <Camera style={{ flex: 1 }} type={Camera.Constants.Type.front} ref={(ref) => (cameraRef.current = ref)}>
+          <Camera style={{ flex: 1 }} type={(Camera.Constants.Type as any).front} ref={(ref) => (cameraRef.current = ref)}>
             <View style={styles.cameraOverlay}>
               <View style={styles.faceFrame} />
             </View>

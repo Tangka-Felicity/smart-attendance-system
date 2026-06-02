@@ -9,13 +9,14 @@ import { setLanguage } from './src/store/slices/langSlice';
 import { setThemeMode } from './src/store/slices/themeSlice';
 import RootNavigator from './src/navigation/RootNavigator';
 import { Colors } from './src/theme';
+import { registerForPushNotifications, addNotificationListeners } from './src/services/notificationService';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 30,
+      cacheTime: 1000 * 60 * 30,
     },
   },
 });
@@ -32,6 +33,14 @@ export default function App() {
         store.dispatch(setThemeMode(saved));
       }
     });
+
+    // Best-effort push notification setup (never throws)
+    registerForPushNotifications();
+    const unsubscribe = addNotificationListeners(
+      () => {},
+      () => {}
+    );
+    return unsubscribe;
   }, []);
 
   return (

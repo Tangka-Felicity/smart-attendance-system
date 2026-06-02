@@ -309,14 +309,14 @@ interface ProgressBarProps {
   percentage: number;
   height?: number;
   trackColor?: string;
-  fillColors?: readonly [string, string, ...string[]];
+  fillColors?: string[];
   style?: ViewStyle;
 }
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({ percentage, height = 8, trackColor, fillColors, style }) => {
   const { colors } = useTheme();
   const clamped = Math.max(0, Math.min(100, percentage));
-  const fill: readonly [string, string, ...string[]] = fillColors ?? [colors.primary, colors.gradientEnd];
+  const fill: string[] = fillColors ?? [colors.primary, colors.gradientEnd];
   return (
     <View style={[{ height, borderRadius: height / 2, backgroundColor: trackColor ?? colors.border, overflow: 'hidden' }, style]}>
       <LinearGradient colors={fill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ width: `${clamped}%`, height: '100%', borderRadius: height / 2 }} />

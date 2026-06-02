@@ -1,10 +1,23 @@
 import axios, { AxiosError } from 'axios';
 import type { AxiosInstance } from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/v1';
+// Resolve the backend base URL. Prefer VITE_API_BASE_URL (the documented var),
+// fall back to the legacy VITE_API_URL, then to the hosted backend so the
+// deployed app works even if no env var is configured on the host.
+const ENV_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+
+export const API_BASE_URL =
+  (ENV_BASE_URL && String(ENV_BASE_URL).trim()) ||
+  'https://felicityb4-smart-attendance-backend.hf.space/v1';
+
+// Hugging Face free-tier Spaces sleep after inactivity and can take ~30-60s to
+// wake. Use a generous timeout so the first request doesn't fail prematurely.
+export const API_TIMEOUT_MS = 90_000;
 
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT_MS,
 });
 
 // Request Interceptor

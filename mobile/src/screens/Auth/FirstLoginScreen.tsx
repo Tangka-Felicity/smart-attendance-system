@@ -274,7 +274,7 @@ const FirstLoginScreen = () => {
                     marginTop: 10,
                   }}
                 >
-                  <View style={{ width: strength.width, height: '100%', backgroundColor: strength.color }} />
+                  <View style={{ width: strength.width as any, height: '100%', backgroundColor: strength.color }} />
                 </View>
                 <Text style={{ color: strength.color, fontSize: 12, marginTop: 6 }}>{t(strength.key)}</Text>
               </View>

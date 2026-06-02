@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { Eye, EyeOff, Mail, Lock, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../context/LanguageContext';
+import { API_BASE_URL } from '../../api/client';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -13,21 +14,47 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [backendStatus, setBackendStatus] = useState<'unknown' | 'up' | 'down'>('unknown');
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'up' | 'down'>('checking');
 
   useEffect(() => {
-    const checkBackend = async () => {
+    let cancelled = false;
+    const healthUrl = API_BASE_URL.replace(/\/v1\/?$/, '') + '/health';
+
+    // A hosted free-tier backend may be asleep; poll a few times with a long
+    // per-attempt timeout to give it time to wake before declaring it down.
+    const probe = async (timeoutMs: number) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const apiBase = import.meta.env.VITE_API_URL || '/v1';
-        const healthUrl = apiBase.replace(/\/v1$/, '') + '/health';
-        const res = await fetch(healthUrl);
-        setBackendStatus(res.ok ? 'up' : 'down');
-      } catch (err) {
-        console.error('Backend health check failed:', err);
-        setBackendStatus('down');
+        const res = await fetch(healthUrl, { signal: controller.signal });
+        return res.ok;
+      } finally {
+        clearTimeout(timer);
       }
     };
+
+    const checkBackend = async () => {
+      for (let attempt = 0; attempt < 3 && !cancelled; attempt++) {
+        try {
+          const ok = await probe(30_000);
+          if (cancelled) return;
+          if (ok) {
+            setBackendStatus('up');
+            return;
+          }
+        } catch (err) {
+          console.error('Backend health check failed:', err);
+        }
+        // brief pause before retrying (gives the server time to spin up)
+        await new Promise((r) => setTimeout(r, 2_000));
+      }
+      if (!cancelled) setBackendStatus('down');
+    };
+
     checkBackend();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,9 +168,18 @@ export const LoginPage: React.FC = () => {
               <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>
             </div>
           )}
+          {backendStatus === 'checking' && !error && (
+            <div style={{ background: 'var(--primary-light)', border: '1px solid var(--primary)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg className="animate-spin" style={{ width: 16, height: 16, flexShrink: 0 }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span>{t('connectingToServer')}</span>
+            </div>
+          )}
           {backendStatus === 'down' && !error && (
             <div style={{ background: 'var(--warning-bg)', border: '1px solid var(--warning)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--warning)' }}>
-              {t('unableToVerifyBackend')}
+              {t('serverWakingUp')}
             </div>
           )}
 

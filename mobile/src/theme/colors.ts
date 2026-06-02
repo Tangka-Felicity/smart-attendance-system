@@ -1,6 +1,6 @@
 import type { StatusBarStyle } from 'react-native';
 
-type Gradient = readonly [string, string, ...string[]];
+type Gradient = string[];
 
 export const lightColors = {
   background: '#F0F4FF',

@@ -2,11 +2,20 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
-export const API_BASE_URL = __DEV__
-  ? Platform.OS === 'android'
-    ? 'http://10.0.2.2:8000/v1'
-    : 'http://localhost:8000/v1'
-  : 'https://sas-backend.onrender.com/v1';
+const getBaseURL = () => {
+  // Build-time / runtime override (EAS profiles set EXPO_PUBLIC_API_URL)
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+  if (__DEV__) {
+    return Platform.OS === 'android'
+      ? 'http://10.0.2.2:8000/v1'
+      : 'http://localhost:8000/v1';
+  }
+  return 'https://sas-backend.onrender.com/v1';
+};
+
+export const API_BASE_URL = getBaseURL();
 
 const client: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

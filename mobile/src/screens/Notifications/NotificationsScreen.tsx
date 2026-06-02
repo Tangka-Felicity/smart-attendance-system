@@ -11,7 +11,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { notificationApi } from '../../api';
-import { Swipeable } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { GradientHeader, EmptyState } from '../../components';
 import { useTheme } from '../../hooks/useTheme';
@@ -142,33 +141,26 @@ const NotificationsScreen = () => {
         )}
         renderItem={({ item }) => {
           const accent = accentFor(item.type);
-          const renderRightActions = () => (
-            <TouchableOpacity onPress={() => handleMarkRead(item)} style={{ backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, marginBottom: 8, borderRadius: 16, marginRight: 16 }}>
-              <Text style={{ color: '#fff', fontWeight: '700' }}>{t('markAsRead')}</Text>
-            </TouchableOpacity>
-          );
           return (
-            <Swipeable renderRightActions={renderRightActions}>
-              <TouchableOpacity activeOpacity={0.85} onPress={() => handleMarkRead(item)}>
-                <View style={{ marginHorizontal: 16, marginBottom: 8, borderRadius: 16, overflow: 'hidden', flexDirection: 'row', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
-                  <View style={{ width: 4, backgroundColor: accent }} />
-                  <View style={{ flex: 1, padding: 14 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: tintFor(item.type), justifyContent: 'center', alignItems: 'center' }}>
-                        <Ionicons name={iconFor(item.type) as any} size={18} color={accent} />
-                      </View>
-                      <Text style={{ fontSize: 11, color: colors.textMuted }}>
-                        {timeAgo(item.created_at ?? item.timestamp ?? new Date().toISOString())}
-                      </Text>
+            <TouchableOpacity activeOpacity={0.85} onPress={() => handleMarkRead(item)}>
+              <View style={{ marginHorizontal: 16, marginBottom: 8, borderRadius: 16, overflow: 'hidden', flexDirection: 'row', backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+                <View style={{ width: 4, backgroundColor: accent }} />
+                <View style={{ flex: 1, padding: 14 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: tintFor(item.type), justifyContent: 'center', alignItems: 'center' }}>
+                      <Ionicons name={iconFor(item.type) as any} size={18} color={accent} />
                     </View>
-                    <Text style={{ fontSize: 13, color: colors.text, marginTop: 8, lineHeight: 18 }}>{item.message ?? t('noMessageProvided')}</Text>
+                    <Text style={{ fontSize: 11, color: colors.textMuted }}>
+                      {timeAgo(item.created_at ?? item.timestamp ?? new Date().toISOString())}
+                    </Text>
                   </View>
-                  {!item.read && (
-                    <View style={{ position: 'absolute', top: 14, right: 14, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }} />
-                  )}
+                  <Text style={{ fontSize: 13, color: colors.text, marginTop: 8, lineHeight: 18 }}>{item.message ?? t('noMessageProvided')}</Text>
                 </View>
-              </TouchableOpacity>
-            </Swipeable>
+                {!item.read && (
+                  <View style={{ position: 'absolute', top: 14, right: 14, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary }} />
+                )}
+              </View>
+            </TouchableOpacity>
           );
         }}
       />

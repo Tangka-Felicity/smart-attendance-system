@@ -149,7 +149,7 @@ const DashboardScreen = () => {
           <Text style={{ fontSize: 13, fontWeight: '700', color: markColor }}>{`${progress}%`}</Text>
         </View>
 
-        <ProgressBar percentage={progress} height={8} fillColors={thresholdFill(progress)} />
+        <ProgressBar percentage={progress} height={8} fillColors={[...thresholdFill(progress)]} />
 
         <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 8 }}>
           {`${Math.max(0, sessionsTotal - sessionsCompleted)} ${t('sessionsRemaining')}`}

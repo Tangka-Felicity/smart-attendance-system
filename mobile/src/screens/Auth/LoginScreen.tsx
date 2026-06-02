@@ -98,7 +98,7 @@ const LoginScreen = () => {
     }
 
     try {
-      const result = await dispatch(login({ email, password })).unwrap();
+      const result = await (dispatch as any)(login({ email, password })).unwrap();
       hapticSuccess();
       if (result.user?.first_login && result.user?.role === 'LECTURER') {
         navigation.navigate('FirstLoginScreen' as never);

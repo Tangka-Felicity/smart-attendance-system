@@ -99,8 +99,8 @@ const HomeScreen = () => {
   );
 
   const attendanceRateNum = useMemo(() => {
-    if (typeof user?.attendance_rate === 'number') {
-      return user.attendance_rate;
+    if (typeof (user as any)?.attendance_rate === 'number') {
+      return (user as any).attendance_rate;
     }
     return 96;
   }, [user]);
@@ -611,7 +611,7 @@ const HomeScreen = () => {
                         title={t('checkIn')}
                         onPress={() => {
                           hapticSuccess();
-                          navigation.navigate('CheckIn' as never, { session: item } as never);
+                          (navigation as any).navigate('CheckIn', { session: item });
                         }}
                         style={{ height: 40, marginTop: 12 }}
                         fullWidth

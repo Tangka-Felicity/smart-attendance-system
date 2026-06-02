@@ -82,12 +82,12 @@ const CheckInScreen = () => {
       return;
     }
 
-    navigation.navigate('Face' as never, {
+    (navigation as any).navigate('Face', {
       session,
       qrToken: data,
       latitude: locationData.coords.latitude,
       longitude: locationData.coords.longitude,
-    } as never);
+    });
   };
 
   const pulseStyle = {
@@ -127,7 +127,7 @@ const CheckInScreen = () => {
             style={{ flex: 1 }}
             ref={(ref) => (cameraRef.current = ref)}
             onBarCodeScanned={handleBarCodeScanned}
-            barCodeScannerSettings={{ barCodeTypes: [Camera.Constants.BarCodeType.qr] }}
+            barCodeScannerSettings={{ barCodeTypes: [(Camera.Constants as any).BarCodeType.qr] }}
             ratio="16:9"
           >
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

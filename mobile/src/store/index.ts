@@ -4,11 +4,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import authReducer from './slices/authSlice';
 import offlineReducer from './slices/offlineSlice';
 import langReducer from './slices/langSlice';
+import themeReducer from './slices/themeSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
   offline: offlineReducer,
   lang: langReducer,
+  theme: themeReducer,
 });
 
 const persistConfig = {
@@ -18,12 +20,12 @@ const persistConfig = {
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
-const languageListenerMiddleware = createListenerMiddleware<RootState, AppDispatch>();
+const languageListenerMiddleware = createListenerMiddleware();
 
 languageListenerMiddleware.startListening({
-  predicate: (_action, currentState, previousState) =>
+  predicate: (_action: unknown, currentState: any, previousState: any) =>
     currentState.lang.lang !== previousState.lang.lang,
-  effect: async (_action, listenerApi) => {
+  effect: async (_action: unknown, listenerApi: any) => {
     try {
       const lang = listenerApi.getState().lang.lang;
       await AsyncStorage.setItem('sas_lang', lang);

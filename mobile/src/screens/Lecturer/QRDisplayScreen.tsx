@@ -99,14 +99,14 @@ const QRDisplayScreen = () => {
       <ScrollView contentContainerStyle={{ padding: Spacing.lg, paddingBottom: Spacing.xl }}>
         {/* Session Info */}
         <View style={{ marginBottom: Spacing.lg }}>
-          <Text style={[{ fontSize: 20, fontWeight: '700', color: Colors.text }]}>{sessionData?.course_name ?? sessionData?.title ?? t('session')}</Text>
+          <Text style={[{ fontSize: 20, fontWeight: '700', color: Colors.textPrimary }]}>{sessionData?.course_name ?? sessionData?.title ?? t('session')}</Text>
           <Text style={[{ fontSize: 14, color: Colors.textSecondary, marginTop: Spacing.xs }]}>{sessionData?.starts_at && sessionData?.ends_at ? `${sessionData.starts_at} — ${sessionData.ends_at}` : sessionData?.time_range}</Text>
           <Text style={[{ fontSize: 13, color: Colors.textMuted, marginTop: Spacing.xs }]}>{sessionData?.venue_name}</Text>
         </View>
         <Card elevated style={{ marginBottom: Spacing.lg }}>
           <Text style={[Typography.label, { color: Colors.textSecondary }]}>{t('attendanceCount')}</Text>
           <Text style={[Typography.heading2, { color: Colors.primary, marginTop: Spacing.sm }]}>{attendanceCount} {t('studentsCheckedIn')}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('LiveAttendance' as never, { sessionId } as never)} style={{ marginTop: Spacing.md, paddingVertical: Spacing.md, backgroundColor: Colors.white, borderRadius: Radius.full, alignItems: 'center', borderWidth: 1, borderColor: Colors.primary }}>
+          <TouchableOpacity onPress={() => (navigation as any).navigate('LiveAttendance', { sessionId })} style={{ marginTop: Spacing.md, paddingVertical: Spacing.md, backgroundColor: Colors.white, borderRadius: Radius.full, alignItems: 'center', borderWidth: 1, borderColor: Colors.primary }}>
             <Text style={[Typography.button, { color: Colors.primary }]}>{t('viewLive')}</Text>
           </TouchableOpacity>
         </Card>
@@ -169,7 +169,7 @@ const QRDisplayScreen = () => {
         )}
         {/* manual mark action */}
         <View style={{ marginTop: Spacing.lg }}>
-          <TouchableOpacity onPress={() => navigation.navigate('ManualMark' as never, { sessionId } as never)} style={{ backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm }}>
+          <TouchableOpacity onPress={() => (navigation as any).navigate('ManualMark', { sessionId })} style={{ backgroundColor: Colors.white, borderRadius: Radius.lg, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.sm }}>
             <Text style={[Typography.button, { color: Colors.primary, textAlign: 'center' }]}>{t('manualMark')}</Text>
           </TouchableOpacity>
         </View>
