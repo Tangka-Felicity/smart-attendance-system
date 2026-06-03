@@ -23,8 +23,15 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env overrides (committed defaults: .env, .env.production)
+# env files (URLs are also set via eas.json build profiles)
+.env
+.env.local
+.env.production
 .env*.local
+
+# Android signing
+*.jks
+*.keystore
 
 # typescript
 *.tsbuildinfo

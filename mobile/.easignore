@@ -1,0 +1,13 @@
+node_modules/
+.expo/
+dist/
+web-build/
+/android
+/ios
+.git/
+*.jks
+*.keystore
+.env
+.env.local
+.env.production
+.env*.local
