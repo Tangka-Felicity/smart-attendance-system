@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "npm --prefix web ci --include=dev && npm --prefix web run build"
+    "build": "cd web && npm ci --include=dev --include-workspace-root && npm run build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.14",
