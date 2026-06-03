@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import type { AxiosInstance } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 // Resolve the backend base URL. Prefer VITE_API_BASE_URL (the documented var),
 // fall back to the legacy VITE_API_URL, then to the hosted backend so the
@@ -52,7 +52,7 @@ const performRefresh = async (): Promise<string> => {
 client.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as any;
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
     const url: string = originalRequest?.url || '';
 
     const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/logout');
@@ -99,14 +99,14 @@ export const authApi = {
   }) => client.post('/auth/first-login-change-password', body),
   logout: (refresh_token: string) =>
     client.post('/auth/logout', { refresh_token }),
-  me: () => client.get('/auth/me'),
+  me: () => client.get('/auth/me/'),
 };
 
 // Users API
 export const usersApi = {
   me: () =>
     client.get('/users/me'),
-  updateMe: (body: Record<string, any>) =>
+  updateMe: (body: Record<string, unknown>) =>
     client.patch('/users/me', body),
   updateAvatar: (body: { avatar_base64: string }) =>
     client.post('/users/me/avatar', body),
@@ -118,15 +118,15 @@ export const usersApi = {
     client.post('/users/me/change-password', body),
   updateFace: (body: { face_image_base64: string }) =>
     client.post('/users/me/face-register', body),
-  list: (params?: Record<string, any>) =>
-    client.get('/users', { params }),
-  create: (body: Record<string, any>) =>
-    client.post('/users', body),
+  list: (params?: Record<string, unknown>) =>
+    client.get('/users/', { params }),
+  create: (body: Record<string, unknown>) =>
+    client.post('/users/', body),
   get: (id: string) =>
     client.get(`/users/${id}`),
-  update: (id: string, body: Record<string, any>) =>
+  update: (id: string, body: Record<string, unknown>) =>
     client.put(`/users/${id}`, body),
-  registerFace: (studentId: string, body: Record<string, any>) =>
+  registerFace: (studentId: string, body: Record<string, unknown>) =>
     client.post(`/users/${studentId}/register-face`, body),
   deleteFace: (studentId: string, courseId: string) =>
     client.delete(`/users/${studentId}/face/${courseId}`),
@@ -134,13 +134,13 @@ export const usersApi = {
 
 // Courses API
 export const coursesApi = {
-  list: (params?: Record<string, any>) =>
-    client.get('/courses', { params }),
-  create: (body: Record<string, any>) =>
-    client.post('/courses', body),
+  list: (params?: Record<string, unknown>) =>
+    client.get('/courses/', { params }),
+  create: (body: Record<string, unknown>) =>
+    client.post('/courses/', body),
   get: (id: string) =>
     client.get(`/courses/${id}`),
-  update: (id: string, body: Record<string, any>) =>
+  update: (id: string, body: Record<string, unknown>) =>
     client.put(`/courses/${id}`, body),
   students: (id: string) =>
     client.get(`/courses/${id}/students`),
@@ -152,13 +152,13 @@ export const coursesApi = {
 
 // Sessions API
 export const sessionsApi = {
-  list: (params?: Record<string, any>) =>
-    client.get('/sessions', { params }),
-  create: (body: Record<string, any>) =>
-    client.post('/sessions', body),
+  list: (params?: Record<string, unknown>) =>
+    client.get('/sessions/', { params }),
+  create: (body: Record<string, unknown>) =>
+    client.post('/sessions/', body),
   get: (id: string) =>
     client.get(`/sessions/${id}`),
-  update: (id: string, body: Record<string, any>) =>
+  update: (id: string, body: Record<string, unknown>) =>
     client.put(`/sessions/${id}`, body),
   announce: (id: string) =>
     client.post(`/sessions/${id}/announce`),
@@ -174,8 +174,8 @@ export const sessionsApi = {
 
 // Attendance API
 export const attendanceApi = {
-  manual: (body: Record<string, any>) =>
-    client.post('/attendance/manual', body),
+  manual: (body: Record<string, unknown>) =>
+    client.post('/attendance/manual/', body),
   get: (id: string) =>
     client.get(`/attendance/${id}`),
 };
@@ -184,32 +184,32 @@ export const attendanceApi = {
 export const analyticsApi = {
   student: (id: string) =>
     client.get(`/analytics/student/${id}`),
-  reports: (params?: Record<string, any>) =>
+  reports: (params?: Record<string, unknown>) =>
     client.get('/analytics/reports', { params }),
-  export: (params?: Record<string, any>) =>
+  export: (params?: Record<string, unknown>) =>
     client.get('/analytics/export', { params, responseType: 'blob' }),
 };
 
 // Notifications API
 export const notificationsApi = {
-  list: (params?: Record<string, any>) =>
-    client.get('/notifications', { params }),
+  list: (params?: Record<string, unknown>) =>
+    client.get('/notifications/', { params }),
   markRead: (id: string) =>
     client.post(`/notifications/${id}/read`),
 };
 
 // Anomalies API
 export const anomaliesApi = {
-  list: (params?: Record<string, any>) =>
-    client.get('/anomalies', { params }),
+  list: (params?: Record<string, unknown>) =>
+    client.get('/anomalies/', { params }),
   resolve: (id: string) =>
     client.post(`/anomalies/${id}/resolve`),
 };
 
 // Audit API
 export const auditApi = {
-  list: (params?: Record<string, any>) =>
-    client.get('/audit', { params }),
+  list: (params?: Record<string, unknown>) =>
+    client.get('/audit/', { params }),
 };
 
 export default client;
