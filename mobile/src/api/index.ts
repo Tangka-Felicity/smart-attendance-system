@@ -35,7 +35,7 @@ export const usersApi = {
     department?: string;
     bio?: string;
   }) =>
-    client.patch('/users/me', body),
+    client.put('/users/me/', body),
   updateAvatar: (body: { avatar_base64: string }) =>
     client.post('/users/me/avatar', body),
   changePassword: (body: {
@@ -53,8 +53,8 @@ export const usersApi = {
 };
 
 export const studentApi = {
-  faceRegister: (body: { student_id: string; face_image: string }) =>
-    client.post('/students/face-register', body),
+  faceRegister: (body: { face_image_base64: string }) =>
+    client.post('/users/me/face/', body),
 };
 
 // Session API
@@ -84,7 +84,7 @@ export const attendanceApi = {
     qr_token: string;
     latitude: number;
     longitude: number;
-    face_image: string;
+    face_image_b64: string;
   }) =>
     client.post('/attendance/checkin', body),
   checkout: (body: {

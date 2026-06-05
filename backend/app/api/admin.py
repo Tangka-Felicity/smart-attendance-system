@@ -12,7 +12,8 @@ anomaly_router = APIRouter(prefix="/anomalies", tags=["anomalies"])
 audit_router = APIRouter(prefix="/audit", tags=["audit"])
 
 
-@anomaly_router.get("/")
+@anomaly_router.get("")
+@anomaly_router.get("/", include_in_schema=False)
 async def list_anomalies(
     resolved: bool = Query(None),
     limit: int = Query(50, gt=0),
@@ -29,6 +30,7 @@ async def list_anomalies(
 
 
 @anomaly_router.put("/{flag_id}/resolve")
+@anomaly_router.put("/{flag_id}/resolve/", include_in_schema=False)
 async def resolve_anomaly(
     flag_id: str,
     db: AsyncSession = Depends(get_db),
@@ -43,7 +45,8 @@ async def resolve_anomaly(
     return flag
 
 
-@audit_router.get("/")
+@audit_router.get("")
+@audit_router.get("/", include_in_schema=False)
 async def list_audit_logs(
     limit: int = Query(50, gt=0),
     offset: int = Query(0, ge=0),

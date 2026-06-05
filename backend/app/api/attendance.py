@@ -11,6 +11,7 @@ router = APIRouter(prefix="/attendance", tags=["attendance"])
 
 
 @router.post("/checkin")
+@router.post("/checkin/", include_in_schema=False)
 async def checkin(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -44,6 +45,7 @@ async def checkin(
 
 
 @router.post("/checkout")
+@router.post("/checkout/", include_in_schema=False)
 async def checkout(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -71,6 +73,7 @@ async def checkout(
 
 
 @router.post("/manual")
+@router.post("/manual/", include_in_schema=False)
 async def manual_mark(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -105,6 +108,7 @@ async def manual_mark(
 
 
 @router.post("/sync")
+@router.post("/sync/", include_in_schema=False)
 async def sync_offline(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -124,6 +128,7 @@ async def sync_offline(
 
 
 @router.get("/{record_id}")
+@router.get("/{record_id}/", include_in_schema=False)
 async def get_record(record_id: str, db: AsyncSession = Depends(get_db), current=Depends(get_current_user())):
     record = await db.get(AttendanceRecord, record_id)
     if not record:

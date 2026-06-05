@@ -48,11 +48,11 @@ const FaceScreen = () => {
 
     const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: true });
     const payload = {
-      session_id: session.id,
+      session_id: session.id || session.session_id,
       qr_token: qrToken ?? session.qr_token,
       latitude,
       longitude,
-      face_image: photo.base64,
+      face_image_b64: photo.base64,
     };
 
     const net = await NetInfo.fetch();

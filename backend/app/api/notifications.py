@@ -11,7 +11,8 @@ from app.models.models import Notification
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-@router.get("/")
+@router.get("")
+@router.get("/", include_in_schema=False)
 async def list_notifications(
     limit: int = Query(50, gt=0),
     offset: int = Query(0, ge=0),
@@ -29,6 +30,7 @@ async def list_notifications(
 
 
 @router.put("/{notification_id}/read")
+@router.put("/{notification_id}/read/", include_in_schema=False)
 async def mark_read(
     notification_id: str,
     db: AsyncSession = Depends(get_db),

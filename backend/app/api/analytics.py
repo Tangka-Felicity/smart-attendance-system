@@ -15,6 +15,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 @router.get("/student/{student_id}")
+@router.get("/student/{student_id}/", include_in_schema=False)
 async def student_analytics(student_id: str, db: AsyncSession = Depends(get_db), current=Depends(get_current_user())):
     if current.get("role") == "STUDENT" and current.get("id") != student_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -43,6 +44,7 @@ async def student_analytics(student_id: str, db: AsyncSession = Depends(get_db),
 
 
 @router.get("/reports")
+@router.get("/reports/", include_in_schema=False)
 async def get_reports(
     report_type: str = Query("summary", regex="^(summary|attendance_by_student|attendance_by_course)$"),
     db: AsyncSession = Depends(get_db),
@@ -82,6 +84,7 @@ async def get_reports(
 
 
 @router.get("/export")
+@router.get("/export/", include_in_schema=False)
 async def export_analytics(
     fmt: Literal["csv", "xlsx"] = "csv",
     db: AsyncSession = Depends(get_db),

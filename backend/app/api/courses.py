@@ -13,7 +13,8 @@ from app.services.notification_service import NotificationService
 router = APIRouter(prefix="/courses", tags=["courses"])
 
 
-@router.get("/")
+@router.get("")
+@router.get("/", include_in_schema=False)
 async def list_courses(db: AsyncSession = Depends(get_db), current=Depends(get_current_user())):
     role = current.get("role")
     user_id = current.get("id")
@@ -28,7 +29,8 @@ async def list_courses(db: AsyncSession = Depends(get_db), current=Depends(get_c
     return res.scalars().all()
 
 
-@router.post("/")
+@router.post("")
+@router.post("/", include_in_schema=False)
 async def create_course(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -55,6 +57,7 @@ async def create_course(
 
 
 @router.get("/{course_id}/students")
+@router.get("/{course_id}/students/", include_in_schema=False)
 async def course_students(course_id: str, db: AsyncSession = Depends(get_db), current=Depends(require_roles("SUPER_ADMIN", "LECTURER"))):
     q = select(Student).join(CourseEnrollment).where(CourseEnrollment.course_id == course_id)
     res = await db.execute(q)
@@ -63,6 +66,7 @@ async def course_students(course_id: str, db: AsyncSession = Depends(get_db), cu
 
 
 @router.post("/{course_id}/enroll")
+@router.post("/{course_id}/enroll/", include_in_schema=False)
 async def enroll_students(
     course_id: str,
     payload: dict = Body(...),
@@ -87,6 +91,7 @@ async def enroll_students(
 
 
 @router.delete("/{course_id}/enroll/{student_id}")
+@router.delete("/{course_id}/enroll/{student_id}/", include_in_schema=False)
 async def remove_enrollment(
     course_id: str,
     student_id: str,
