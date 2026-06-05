@@ -27,7 +27,8 @@ def _parse_datetime(value: str, field_name: str) -> datetime:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid {field_name} format: {value}")
 
 
-@router.get("/")
+@router.get("")
+@router.get("/", include_in_schema=False)
 async def list_sessions(
     course_id: Optional[str] = None,
     status_filter: Optional[str] = None,
@@ -43,7 +44,8 @@ async def list_sessions(
     return res.scalars().all()
 
 
-@router.post("/")
+@router.post("")
+@router.post("/", include_in_schema=False)
 async def create_session(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -88,6 +90,7 @@ async def create_session(
 
 
 @router.get("/{session_id}")
+@router.get("/{session_id}/", include_in_schema=False)
 async def get_session(session_id: str, db: AsyncSession = Depends(get_db), current=Depends(get_current_user())):
     session = await db.get(Session, session_id)
     if not session:
@@ -96,6 +99,7 @@ async def get_session(session_id: str, db: AsyncSession = Depends(get_db), curre
 
 
 @router.put("/{session_id}")
+@router.put("/{session_id}/", include_in_schema=False)
 async def update_session(
     session_id: str,
     payload: dict = Body(...),
@@ -119,6 +123,7 @@ async def update_session(
 
 
 @router.post("/{session_id}/announce")
+@router.post("/{session_id}/announce/", include_in_schema=False)
 async def announce_session(
     session_id: str,
     payload: dict = Body(...),
@@ -138,6 +143,7 @@ async def announce_session(
 
 
 @router.post("/{session_id}/open")
+@router.post("/{session_id}/open/", include_in_schema=False)
 async def open_session(
     session_id: str,
     db: AsyncSession = Depends(get_db),
@@ -155,6 +161,7 @@ async def open_session(
 
 
 @router.post("/{session_id}/close")
+@router.post("/{session_id}/close/", include_in_schema=False)
 async def close_session(
     session_id: str,
     db: AsyncSession = Depends(get_db),
@@ -180,6 +187,7 @@ async def close_session(
 
 
 @router.get("/{session_id}/qr")
+@router.get("/{session_id}/qr/", include_in_schema=False)
 async def get_qr(
     session_id: str,
     db: AsyncSession = Depends(get_db),
@@ -197,6 +205,7 @@ async def get_qr(
 
 
 @router.get("/{session_id}/attendance")
+@router.get("/{session_id}/attendance/", include_in_schema=False)
 async def get_attendance(session_id: str, db: AsyncSession = Depends(get_db), current=Depends(get_current_user())):
     q = select(AttendanceRecord).where(AttendanceRecord.session_id == session_id)
     res = await db.execute(q)

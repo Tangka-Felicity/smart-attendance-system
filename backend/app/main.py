@@ -47,7 +47,12 @@ async def lifespan(app: FastAPI):
         await redis.close()
 
 
-app = FastAPI(title="Smart Attendance System API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="Smart Attendance System API",
+    version="1.0.0",
+    lifespan=lifespan,
+    redirect_slashes=True
+)
 
 app.add_middleware(
     CORSMiddleware,

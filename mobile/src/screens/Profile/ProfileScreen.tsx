@@ -528,13 +528,23 @@ const ProfileScreen = () => {
       return;
     }
 
-    setCameraMode(null);
-    setProfile((current) => ({
-      ...current,
-      face_registered_at: new Date().toISOString(),
-    }));
-    hapticSuccess();
-    showToast(t('faceUpdatedSuccessfully'));
+    setCameraLoading(true);
+    try {
+      await usersApi.updateFace({ face_image_base64: base64 });
+      setCameraMode(null);
+      setProfile((current) => ({
+        ...current,
+        face_registered_at: new Date().toISOString(),
+      }));
+      hapticSuccess();
+      showToast(t('faceUpdatedSuccessfully'));
+    } catch (error: any) {
+      hapticError();
+      const detail = error?.response?.data?.detail || error?.message || t('somethingWentWrong');
+      showToast(detail);
+    } finally {
+      setCameraLoading(false);
+    }
   };
 
   const infoRow = (label: string, value: string, isLast = false) => (

@@ -17,7 +17,8 @@ from app.services.face_service import AzureFaceService
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("/")
+@router.get("")
+@router.get("/", include_in_schema=False)
 async def list_users(
     role: str = None, # type: ignore
     status: str = None, # type: ignore
@@ -36,7 +37,8 @@ async def list_users(
     return res.scalars().all()
 
 
-@router.post("/")
+@router.post("")
+@router.post("/", include_in_schema=False)
 async def create_user(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -53,9 +55,9 @@ async def create_user(
     db.add(user)
     await db.flush()
     if role == "STUDENT":
-        student_number = payload.get("student_number")
+        student_number = (payload.get("student_number") or payload.get("matricule") or "").strip()
         if not student_number:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing student_number for student")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing student_number or matricule for student")
         student = Student(student_id=user.user_id, student_number=student_number)
         db.add(student)
         await db.flush()
@@ -63,6 +65,7 @@ async def create_user(
 
 
 @router.post("/bulk-csv")
+@router.post("/bulk-csv/", include_in_schema=False)
 async def bulk_csv(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
@@ -77,7 +80,7 @@ async def bulk_csv(
             name = row.get("name")
             email = row.get("email")
             password = row.get("password")
-            student_number = row.get("student_number")
+            student_number = row.get("student_number") or row.get("matricule")
             if not (name and email and password and student_number):
                 continue
             user = User(
@@ -100,6 +103,7 @@ async def bulk_csv(
 
 
 @router.get("/{user_id}")
+@router.get("/{user_id}/", include_in_schema=False)
 async def get_user(user_id: str, db: AsyncSession = Depends(get_db), current=Depends(get_current_user())):
     if current.get("role") != "SUPER_ADMIN" and current.get("id") != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -110,24 +114,89 @@ async def get_user(user_id: str, db: AsyncSession = Depends(get_db), current=Dep
 
 
 @router.put("/{user_id}")
+@router.put("/{user_id}/", include_in_schema=False)
 async def update_user(
     user_id: str,
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
-    current=Depends(require_roles("SUPER_ADMIN")),
+    current=Depends(get_current_user()),
 ):
+    if current.get("role") != "SUPER_ADMIN" and current.get("id") != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    user.name = payload.get("name", user.name)
-    user.email = payload.get("email", user.email)
-    user.status = payload.get("status", user.status)
+
+    if "name" in payload:
+        user.name = payload["name"]
+    if "email" in payload:
+        user.email = payload["email"]
+    if "phone" in payload:
+        user.phone = payload["phone"]
+    if "department" in payload:
+        user.department = payload["department"]
+    if "bio" in payload:
+        user.bio = payload["bio"]
+
+    if current.get("role") == "SUPER_ADMIN" and "status" in payload:
+        user.status = payload["status"]
+
     await AuditService.log(db, current.get("id"), "update_user", "user", user_id, payload)
     await db.flush()
     return user
 
 
-@router.post("/students/{student_id}/face")
+@router.post("/me/avatar/")
+@router.post("/me/avatar", include_in_schema=False)
+async def update_avatar(
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current=Depends(get_current_user()),
+):
+    user_id = current.get("id")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    avatar_b64 = payload.get("avatar_base64")
+    if not avatar_b64:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing avatar_base64")
+
+    user.avatar_base64 = avatar_b64
+    await db.flush()
+    return {"status": "success"}
+
+
+@router.post("/me/face/")
+@router.post("/me/face", include_in_schema=False)
+async def update_me_face(
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current=Depends(require_roles("STUDENT")),
+):
+    user_id = current.get("id")
+    face_image_b64 = payload.get("face_image_base64") or payload.get("face_image")
+    if not face_image_b64:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing face_image_base64")
+
+    student = await db.get(Student, user_id)
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    # Using register_face from FacePlusPlusService (aliased as AzureFaceService)
+    face_token = await AzureFaceService.register_face(None, user_id, face_image_b64)
+    if face_token:
+        student.face_embedding = face_token
+        student.face_registered_at = __import__("datetime").datetime.utcnow()
+        await db.flush()
+        return {"status": "success", "face_token": face_token}
+
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Face detection failed")
+
+
+@router.post("/students/{student_id}/face/")
+@router.post("/students/{student_id}/face", include_in_schema=False)
 async def add_student_face(
     student_id: str,
     payload: dict = Body(...),
@@ -149,7 +218,8 @@ async def add_student_face(
     return {"person_id": person_id}
 
 
-@router.delete("/students/{student_id}/face")
+@router.delete("/students/{student_id}/face/")
+@router.delete("/students/{student_id}/face", include_in_schema=False)
 async def delete_student_face(
     student_id: str,
     payload: dict = Body(...),

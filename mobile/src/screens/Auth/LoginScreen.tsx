@@ -100,7 +100,7 @@ const LoginScreen = () => {
     try {
       const result = await (dispatch as any)(login({ email, password })).unwrap();
       hapticSuccess();
-      if (result.user?.first_login && result.user?.role === 'LECTURER') {
+      if (result.user?.first_login) {
         navigation.navigate('FirstLoginScreen' as never);
       }
     } catch {

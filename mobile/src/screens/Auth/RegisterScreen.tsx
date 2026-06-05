@@ -278,9 +278,9 @@ const RegisterScreen = () => {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (skipFace = false) => {
     hapticLight();
-    if (!capturedFace?.base64) {
+    if (!skipFace && !capturedFace?.base64) {
       hapticError();
       setError(t('cameraAccessIsRequiredForFaceCapture'));
       return;
@@ -310,11 +310,13 @@ const RegisterScreen = () => {
       }
       const studentIdValue = String(studentId);
 
-      setLoadingStage('registeringFace');
-      await studentApi.faceRegister({
-        student_id: studentIdValue,
-        face_image: capturedFace.base64,
-      });
+      if (!skipFace && capturedFace?.base64) {
+        setLoadingStage('registeringFace');
+        await studentApi.faceRegister({
+          student_id: studentIdValue,
+          face_image: capturedFace.base64,
+        });
+      }
 
       const loginResponse = await authApi.login(trimmedEmail, values.password);
       const { access_token, refresh_token, user } = loginResponse.data ?? {};
@@ -778,9 +780,10 @@ const RegisterScreen = () => {
                   ) : null}
 
                   <TouchableOpacity
-                    onPress={handleSubmit}
+                    onPress={() => handleSubmit(false)}
                     disabled={!capturedFace}
                     activeOpacity={0.85}
+                    style={{ marginBottom: 12 }}
                   >
                     <LinearGradient
                       colors={[colors.primary, colors.gradientEnd]}
@@ -798,6 +801,20 @@ const RegisterScreen = () => {
                         {t('completeRegistration')}
                       </Text>
                     </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => handleSubmit(true)}
+                    activeOpacity={0.85}
+                    style={{
+                      height: 48,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>
+                      {t('skipForNow')}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity

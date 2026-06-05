@@ -10,8 +10,8 @@ from app.services.auth_service import AuthService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/login", include_in_schema=False)
-@router.post("/login/")
+@router.post("/login")
+@router.post("/login/", include_in_schema=False)
 async def login(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -24,8 +24,8 @@ async def login(
     return await AuthService.login(db, redis, email, password)
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED, include_in_schema=False)
-@router.post("/register/", status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register/", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 async def register(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -34,8 +34,8 @@ async def register(
     return await AuthService.register(db, redis, payload)
 
 
-@router.post("/refresh", include_in_schema=False)
-@router.post("/refresh/")
+@router.post("/refresh")
+@router.post("/refresh/", include_in_schema=False)
 async def refresh(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -47,8 +47,8 @@ async def refresh(
     return await AuthService.refresh(db, redis, token)
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, include_in_schema=False)
-@router.post("/logout/", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/logout/", status_code=status.HTTP_204_NO_CONTENT, include_in_schema=False)
 async def logout(
     payload: dict = Body(...),
     redis=Depends(get_redis),
@@ -60,8 +60,8 @@ async def logout(
     return None
 
 
-@router.get("/me", include_in_schema=False)
-@router.get("/me/")
+@router.get("/me")
+@router.get("/me/", include_in_schema=False)
 async def me(
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user()),
@@ -82,8 +82,8 @@ async def me(
     }
 
 
-@router.post("/first-login-change-password", include_in_schema=False)
-@router.post("/first-login-change-password/")
+@router.post("/first-login-change-password")
+@router.post("/first-login-change-password/", include_in_schema=False)
 async def first_login_change_password(
     payload: dict = Body(...),
     db: AsyncSession = Depends(get_db),

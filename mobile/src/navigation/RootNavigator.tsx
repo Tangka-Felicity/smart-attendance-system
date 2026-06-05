@@ -71,7 +71,7 @@ export const RootNavigator = () => {
             <Stack.Screen name="RegisterScreen" component={RegisterScreen} />
             <Stack.Screen name="FirstLoginScreen" component={FirstLoginScreen} />
           </>
-        ) : user.first_login && user.role === 'LECTURER' ? (
+        ) : user.first_login ? (
           <Stack.Screen name="FirstLoginScreen" component={FirstLoginScreen} />
         ) : user.role === 'STUDENT' ? (
           <>
