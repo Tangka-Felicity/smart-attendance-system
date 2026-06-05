@@ -19,9 +19,12 @@ def _parse_datetime(value: str, field_name: str) -> datetime:
     if not value:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Missing {field_name}")
     try:
+        # Handle JS toISOString() which ends with 'Z'
+        if isinstance(value, str) and value.endswith("Z"):
+            value = value.replace("Z", "+00:00")
         return datetime.fromisoformat(value)
     except Exception:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid {field_name} format")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid {field_name} format: {value}")
 
 
 @router.get("/")
@@ -52,6 +55,16 @@ async def create_session(
     venue_name = payload.get("venue_name")
     latitude = payload.get("latitude")
     longitude = payload.get("longitude")
+
+    # Coerce latitude/longitude to float if they are strings
+    try:
+        if latitude is not None:
+            latitude = float(latitude)
+        if longitude is not None:
+            longitude = float(longitude)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Latitude and longitude must be numbers")
+
     if not (course_id and venue_name and latitude is not None and longitude is not None):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing fields")
     if end_time <= start_time:

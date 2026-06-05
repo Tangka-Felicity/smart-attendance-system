@@ -21,6 +21,12 @@ class AuthService:
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
+        if user.status != UserStatus.ACTIVE:
+            if user.status == UserStatus.SUSPENDED:
+                raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="User account suspended")
+            status_val = user.status.value if hasattr(user.status, "value") else str(user.status)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"User account is {status_val}")
+
         from app.core.security import verify_password
 
         if not verify_password(password, user.password_hash):
@@ -64,7 +70,9 @@ class AuthService:
         name = (payload.get("name") or "").strip()
         email = (payload.get("email") or "").strip().lower()
         password = payload.get("password") or ""
-        student_number = (payload.get("student_number") or "").strip()
+        phone = (payload.get("phone") or "").strip()
+        # Support both 'student_number' and 'matricule' (mobile uses matricule)
+        student_number = (payload.get("student_number") or payload.get("matricule") or "").strip()
 
         if not (name and email and password and student_number):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing required fields")
@@ -72,26 +80,41 @@ class AuthService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 8 characters")
 
         existing = await db.execute(select(User).where(User.email == email))
-        if existing.scalars().first():
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists")
+        user = existing.scalars().first()
 
         existing_sn = await db.execute(select(Student).where(Student.student_number == student_number))
-        if existing_sn.scalars().first():
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This matricule is already registered")
+        student = existing_sn.scalars().first()
 
-        user = User(
-            user_id=str(_uuid.uuid4()),
-            name=name,
-            email=email,
-            password_hash=hash_password(password),
-            role=UserRole.STUDENT,
-            status=UserStatus.ACTIVE,
-            first_login=False,
-        )
-        db.add(user)
-        await db.flush()
-        db.add(Student(student_id=user.user_id, student_number=student_number))
-        await db.flush()
+        if user:
+            # If user exists, check if they are the same student and haven't registered face
+            if student and student.student_id == user.user_id:
+                if student.face_profile_id or student.face_embedding:
+                    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists")
+                # Allow re-registration if face not registered
+                user.name = name
+                user.password_hash = hash_password(password)
+                if phone:
+                    user.phone = phone
+            else:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists")
+        else:
+            if student:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This matricule is already registered")
+
+            user = User(
+                user_id=str(_uuid.uuid4()),
+                name=name,
+                email=email,
+                phone=phone or None,
+                password_hash=hash_password(password),
+                role=UserRole.STUDENT,
+                status=UserStatus.ACTIVE,
+                first_login=False,
+            )
+            db.add(user)
+            await db.flush()
+            db.add(Student(student_id=user.user_id, student_number=student_number))
+            await db.flush()
 
         role_str = user.role.value if hasattr(user.role, 'value') else str(user.role)
         access = create_access_token(user.user_id, additional_claims={"role": role_str})
