@@ -76,9 +76,7 @@ const FaceScreen = () => {
     }
 
     try {
-      const photoData = await cameraRef.current.takePictureAsync({ quality: 0.7, base64: true });
-      const payloadWithPhoto = { ...payload, face_image: photoData.base64 ?? '' };
-      const response = await attendanceApi.checkin(payloadWithPhoto);
+      const response = await attendanceApi.checkin(payload);
       setLoading(false);
       (navigation as any).navigate('Confirmed', {
         session,
