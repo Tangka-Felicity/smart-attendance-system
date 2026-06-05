@@ -131,4 +131,15 @@ async def get_record(record_id: str, db: AsyncSession = Depends(get_db), current
     user_id = current.get("id")
     if current.get("role") not in ["SUPER_ADMIN", "LECTURER"] and record.student_id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
-    return record
+    return {
+        "record_id": str(record.record_id),
+        "session_id": str(record.session_id),
+        "student_id": str(record.student_id),
+        "arrival_time": record.arrival_time.isoformat() if record.arrival_time else None,
+        "departure_time": record.departure_time.isoformat() if record.departure_time else None,
+        "attendance_pct": float(record.attendance_pct) if record.attendance_pct is not None else None,
+        "mark": float(record.mark) if record.mark is not None else None,
+        "method": record.method.value if hasattr(record.method, "value") else str(record.method),
+        "is_makeup": record.is_makeup,
+        "manual_reason": record.manual_reason,
+    }
