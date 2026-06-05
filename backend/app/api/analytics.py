@@ -18,16 +18,27 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 async def student_analytics(student_id: str, db: AsyncSession = Depends(get_db), current=Depends(get_current_user())):
     if current.get("role") == "STUDENT" and current.get("id") != student_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
+    # If student_id is empty or "undefined", use current user's id
+    if not student_id or student_id == "undefined":
+        student_id = current.get("id")
+
     q = select(AttendanceRecord).where(AttendanceRecord.student_id == student_id)
     res = await db.execute(q)
     records = res.scalars().all()
+
     sessions_attended = sum(1 for r in records if r.attendance_pct is not None and float(r.attendance_pct) > 0)
-    cumulative_pct = sum(float(r.attendance_pct or 0) for r in records) / len(records) if records else 0
-    cumulative_mark = sum(float(r.mark or 0) for r in records) / len(records) if records else 0
+    total_records = len(records)
+    cumulative_pct = sum(float(r.attendance_pct or 0) for r in records) / total_records if total_records else 0
+    cumulative_mark = sum(float(r.mark or 0) for r in records) / total_records if total_records else 0
+
+    # Also return percentage for mobile dashboard compatibility
     return {
         "sessions_attended": sessions_attended,
         "cumulative_pct": cumulative_pct,
         "cumulative_mark": cumulative_mark,
+        "percentage": round(cumulative_pct, 1),
+        "total_sessions": total_records
     }
 
 

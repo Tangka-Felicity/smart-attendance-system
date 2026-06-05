@@ -56,6 +56,7 @@ class AuthService:
                 "email": user.email,
                 "role": role_str,
                 "status": user.status.value if hasattr(user.status, 'value') else str(user.status),
+                "first_login": user.first_login,
             },
         }
 

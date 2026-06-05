@@ -200,4 +200,19 @@ async def get_qr(
 async def get_attendance(session_id: str, db: AsyncSession = Depends(get_db), current=Depends(get_current_user())):
     q = select(AttendanceRecord).where(AttendanceRecord.session_id == session_id)
     res = await db.execute(q)
-    return res.scalars().all()
+    records = res.scalars().all()
+    return [
+        {
+            "record_id": str(r.record_id),
+            "session_id": str(r.session_id),
+            "student_id": str(r.student_id),
+            "arrival_time": r.arrival_time.isoformat() if r.arrival_time else None,
+            "departure_time": r.departure_time.isoformat() if r.departure_time else None,
+            "attendance_pct": float(r.attendance_pct) if r.attendance_pct is not None else None,
+            "mark": float(r.mark) if r.mark is not None else None,
+            "method": r.method.value if hasattr(r.method, "value") else str(r.method),
+            "is_makeup": r.is_makeup,
+            "manual_reason": r.manual_reason,
+        }
+        for r in records
+    ]
