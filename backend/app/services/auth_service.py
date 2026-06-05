@@ -25,19 +25,22 @@ class AuthService:
 
         if not verify_password(password, user.password_hash):
             key = f"login:fail:{email}"
-            cnt = await redis.incr(key)
-            await redis.expire(key, 24 * 3600)
-            if int(cnt) >= settings.LOGIN_MAX_ATTEMPTS:
-                await db.execute(update(User).where(User.user_id == user.user_id).values(status=UserStatus.SUSPENDED))
-                await db.flush()
-                await NotificationService.notify_super_admins(db, NotificationType.ANOMALY_DETECTED, f"User {user.email} suspended due to failed logins")
+            if redis is not None:
+                cnt = await redis.incr(key)
+                await redis.expire(key, 24 * 3600)
+                if int(cnt) >= settings.LOGIN_MAX_ATTEMPTS:
+                    await db.execute(update(User).where(User.user_id == user.user_id).values(status=UserStatus.SUSPENDED))
+                    await db.flush()
+                    await NotificationService.notify_super_admins(db, NotificationType.ANOMALY_DETECTED, f"User {user.email} suspended due to failed logins")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
         # reset failed attempts
-        await redis.delete(f"login:fail:{email}")
+        if redis is not None:
+            await redis.delete(f"login:fail:{email}")
 
-        access = create_access_token(user.user_id, additional_claims={"role": user.role})
-        refresh = create_refresh_token(user.user_id, additional_claims={"role": user.role})
+        role_str = user.role.value if hasattr(user.role, 'value') else str(user.role)
+        access = create_access_token(user.user_id, additional_claims={"role": role_str})
+        refresh = create_refresh_token(user.user_id, additional_claims={"role": role_str})
         return {
             "access_token": access,
             "refresh_token": refresh,
@@ -45,7 +48,7 @@ class AuthService:
                 "id": str(user.user_id),
                 "name": user.name,
                 "email": user.email,
-                "role": user.role.value if hasattr(user.role, 'value') else str(user.role),
+                "role": role_str,
                 "status": user.status.value if hasattr(user.status, 'value') else str(user.status),
             },
         }
@@ -90,8 +93,9 @@ class AuthService:
         db.add(Student(student_id=user.user_id, student_number=student_number))
         await db.flush()
 
-        access = create_access_token(user.user_id, additional_claims={"role": user.role})
-        refresh = create_refresh_token(user.user_id, additional_claims={"role": user.role})
+        role_str = user.role.value if hasattr(user.role, 'value') else str(user.role)
+        access = create_access_token(user.user_id, additional_claims={"role": role_str})
+        refresh = create_refresh_token(user.user_id, additional_claims={"role": role_str})
         return {
             "access_token": access,
             "refresh_token": refresh,
@@ -99,7 +103,7 @@ class AuthService:
                 "id": str(user.user_id),
                 "name": user.name,
                 "email": user.email,
-                "role": user.role.value if hasattr(user.role, "value") else str(user.role),
+                "role": role_str,
                 "status": user.status.value if hasattr(user.status, "value") else str(user.status),
                 "first_login": False,
             },
@@ -114,12 +118,12 @@ class AuthService:
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
         jti = payload.get("jti")
-        if await redis.sismember("token:blocklist", jti):
+        if redis is not None and await redis.sismember("token:blocklist", jti):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
         # add old jti to blocklist
         exp = int(payload.get("exp", 0))
         ttl = max(0, exp - int(datetime.now(tz=timezone.utc).timestamp()))
-        if ttl > 0:
+        if redis is not None and ttl > 0:
             await redis.sadd("token:blocklist", jti)
             await redis.expire("token:blocklist", ttl)
         subject = payload.get("sub")
@@ -136,7 +140,7 @@ class AuthService:
         jti = payload.get("jti")
         exp = int(payload.get("exp", 0))
         ttl = max(0, exp - int(datetime.now(tz=timezone.utc).timestamp()))
-        if ttl > 0:
+        if redis is not None and ttl > 0:
             await redis.sadd("token:blocklist", jti)
             await redis.expire("token:blocklist", ttl)
         return True

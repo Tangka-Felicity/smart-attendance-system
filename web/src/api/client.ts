@@ -147,7 +147,7 @@ export const coursesApi = {
   enroll: (id: string, student_ids: string[]) =>
     client.post(`/courses/${id}/enroll`, { student_ids }),
   unenroll: (courseId: string, studentId: string) =>
-    client.delete(`/courses/${courseId}/students/${studentId}`),
+    client.delete(`/courses/${courseId}/enroll/${studentId}`),
 };
 
 // Sessions API

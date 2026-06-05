@@ -280,19 +280,40 @@ const CoursesPage: React.FC = () => {
   ];
 
   // Handlers
-  const handleCreateCourse = () => {
+  const handleSaveCourse = () => {
     if (!newCourseForm.name || !newCourseForm.code) {
       toast.error(t('fillCourseNameCode'));
       return;
     }
-    createCourseMutation.mutate({
+
+    const payload = {
       name: newCourseForm.name,
       code: newCourseForm.code,
       semester: newCourseForm.semester,
       academic_year: newCourseForm.academic_year,
-      lecturer: newCourseForm.lecturer,
-    });
+      lecturer_id: newCourseForm.lecturer, // Backend expects lecturer_id
+    };
+
+    if (selectedCourse) {
+      updateCourseMutation.mutate({ id: selectedCourse.id, ...payload });
+    } else {
+      createCourseMutation.mutate(payload);
+    }
   };
+
+  const updateCourseMutation = useMutation({
+    mutationFn: ({ id, ...body }: { id: string } & Record<string, unknown>) => coursesApi.update(id, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      setIsNewCourseOpen(false);
+      setSelectedCourse(null);
+      toast.success(t('courseUpdatedSuccess'));
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(t('failedToUpdateCourse') + message);
+    },
+  });
 
   const handleEnroll = (studentId: string) => {
     if (!selectedCourse) return;
@@ -319,12 +340,12 @@ const CoursesPage: React.FC = () => {
       course_id: expandedCourseId,
       start_time: newSessionForm.start_time,
       end_time: newSessionForm.end_time,
-      venue: newSessionForm.venue,
-      latitude: newSessionForm.latitude || null,
-      longitude: newSessionForm.longitude || null,
+      venue_name: newSessionForm.venue,
+      latitude: Number(newSessionForm.latitude) || 0,
+      longitude: Number(newSessionForm.longitude) || 0,
       geofence_radius: Number(newSessionForm.geofence_radius || 50),
       grace_period: Number(newSessionForm.grace_period || 15),
-      category: newSessionForm.category,
+      category: newSessionForm.category.toUpperCase(),
       coordinator_id: newSessionForm.coordinator_id || null,
     });
   };
@@ -477,7 +498,7 @@ const CoursesPage: React.FC = () => {
         footer={
           <>
             <Button variant="ghost" onClick={() => { setIsNewCourseOpen(false); setSelectedCourse(null); }}>{t('cancel')}</Button>
-            <Button onClick={handleCreateCourse} isLoading={createCourseMutation.status === 'pending'}>{selectedCourse ? t('save') : t('create')}</Button>
+            <Button onClick={handleSaveCourse} isLoading={createCourseMutation.status === 'pending' || updateCourseMutation.status === 'pending'}>{selectedCourse ? t('save') : t('create')}</Button>
           </>
         }
       >

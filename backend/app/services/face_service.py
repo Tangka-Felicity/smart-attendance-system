@@ -1,12 +1,7 @@
-"""
-Face Service — Development Stub
-================================
-Real face recognition will be added once dlib/deepface is installed.
-In dev mode this returns a successful match for testing other features.
-"""
+import httpx
 from dataclasses import dataclass
-from typing import Optional
-
+from typing import Optional, List
+from app.core.config import settings
 
 @dataclass
 class FaceIdentifyResult:
@@ -15,48 +10,88 @@ class FaceIdentifyResult:
     confidence: float
     error:      Optional[str] = None
 
+class FacePlusPlusService:
+    """
+    Face++ (Megvii) Integration Service
+    Uses FaceSets to manage course-level face collections.
+    """
+    BASE_URL = "https://api-us.faceplusplus.com/facepp/v3"
 
-class LocalFaceService:
+    @classmethod
+    async def _request(cls, endpoint: str, data: dict) -> dict:
+        data["api_key"] = settings.FACEPP_API_KEY
+        data["api_secret"] = settings.FACEPP_API_SECRET
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.post(f"{cls.BASE_URL}/{endpoint}", data=data, timeout=20.0)
+                return resp.json()
+            except Exception as e:
+                return {"error_message": str(e)}
 
-    @staticmethod
-    def register_face(image_b64: str) -> tuple[Optional[list], Optional[str]]:
-        """
-        DEV STUB — returns a fake embedding for testing.
-        Replace with real implementation once face_recognition is installed.
-        """
-        # Return 128 zeros as a placeholder embedding
-        fake_embedding = [0.0] * 128
-        return fake_embedding, None
+    @classmethod
+    async def register_face(cls, course_id: str, student_id: str, face_image_b64: str) -> Optional[str]:
+        if not settings.FACEPP_API_KEY:
+            # Fallback for development if keys are missing
+            return f"dev_token_{student_id}"
 
-    @staticmethod
-    def identify_face(
-        submitted_image_b64: str,
-        enrolled_students: list[dict],
-    ) -> FaceIdentifyResult:
-        """
-        DEV STUB — always returns first enrolled student as a match.
-        Replace with real implementation once face_recognition is installed.
-        """
-        if not enrolled_students:
+        # 1. Detect face to get a face_token
+        detect_res = await cls._request("detect", {"image_base64": face_image_b64})
+        faces = detect_res.get("faces", [])
+        if not faces:
+            return None
+        face_token = faces[0]["face_token"]
+
+        # 2. Add face to FaceSet (Course-specific)
+        # Faceset outer_id is the course_id
+        add_res = await cls._request("faceset/addface", {"outer_id": course_id, "face_tokens": face_token})
+
+        if "error_message" in add_res and "OUTER_ID_NOT_FOUND" in add_res["error_message"]:
+            # Create FaceSet if it doesn't exist
+            await cls._request("faceset/create", {"outer_id": course_id})
+            await cls._request("faceset/addface", {"outer_id": course_id, "face_tokens": face_token})
+
+        # 3. Set User ID for the token to identify the student later
+        await cls._request("face/setuserid", {"face_token": face_token, "user_id": student_id})
+
+        return face_token
+
+    @classmethod
+    async def identify_face(cls, course_id: str, face_image_b64: str) -> FaceIdentifyResult:
+        if not settings.FACEPP_API_KEY:
+            # In dev mode, we can't really identify without keys, but let's not break everything
+            return FaceIdentifyResult(matched=True, person_id=None, confidence=100.0)
+
+        search_res = await cls._request("search", {
+            "image_base64": face_image_b64,
+            "outer_id": course_id
+        })
+
+        results = search_res.get("results", [])
+        if not results:
             return FaceIdentifyResult(
-                matched=False, person_id=None, confidence=0.0,
-                error="No students enrolled in this course."
+                matched=False,
+                person_id=None,
+                confidence=0.0,
+                error=search_res.get("error_message", "No match found")
             )
 
-        # In dev mode return the first student with a registered face
-        for student in enrolled_students:
-            if student.get("face_embedding"):
-                return FaceIdentifyResult(
-                    matched=True,
-                    person_id=student["student_id"],
-                    confidence=0.99,
-                )
+        top_match = results[0]
+        confidence = top_match.get("confidence", 0.0)
 
-        return FaceIdentifyResult(
-            matched=False, person_id=None, confidence=0.0,
-            error="No face profiles registered yet."
-        )
+        if confidence >= settings.FACEPP_API_CONFIDENCE_THRESHOLD:
+            return FaceIdentifyResult(
+                matched=True,
+                person_id=top_match.get("user_id"),
+                confidence=confidence
+            )
 
+        return FaceIdentifyResult(matched=False, person_id=None, confidence=confidence)
 
-# Keep same name so nothing else needs to change
-AzureFaceService = LocalFaceService
+    @classmethod
+    async def delete_face_profile(cls, course_id: str, face_token: str):
+        if not settings.FACEPP_API_KEY:
+            return
+        await cls._request("faceset/removeface", {"outer_id": course_id, "face_tokens": face_token})
+
+# Alias for compatibility with existing imports
+AzureFaceService = FacePlusPlusService
