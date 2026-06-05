@@ -17,9 +17,9 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     QR_HMAC_SECRET: str
     QR_TOKEN_TTL_SECONDS: int = 30
-    AZURE_FACE_ENDPOINT: str = ""
-    AZURE_FACE_KEY: str = ""
-    AZURE_FACE_CONFIDENCE_THRESHOLD: float = 0.7
+    FACEPP_API_KEY: str = ""
+    FACEPP_API_SECRET: str = ""
+    FACEPP_API_CONFIDENCE_THRESHOLD: float = 70.0
     FCM_PROJECT_ID: str = ""
     FCM_SERVICE_ACCOUNT_JSON: str = "serviceAccountKey.json"
     CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"]
