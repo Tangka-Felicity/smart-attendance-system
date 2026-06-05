@@ -252,7 +252,7 @@ const RegisterScreen = () => {
     }
 
     setError('');
-    setStep(2);
+    handleSubmit(true);
   };
 
   const handleCapture = async () => {
@@ -280,11 +280,6 @@ const RegisterScreen = () => {
 
   const handleSubmit = async (skipFace = false) => {
     hapticLight();
-    if (!skipFace && !capturedFace?.base64) {
-      hapticError();
-      setError(t('cameraAccessIsRequiredForFaceCapture'));
-      return;
-    }
 
     const trimmedName = values.fullName.trim();
     const trimmedEmail = values.email.trim().toLowerCase();
@@ -297,11 +292,9 @@ const RegisterScreen = () => {
 
       const registerResponse = await authApi.register({
         name: trimmedName,
-        matricule: trimmedMatricule,
+        student_number: trimmedMatricule,
         email: trimmedEmail,
-        phone: trimmedPhone || undefined,
         password: values.password,
-        role: 'student',
       });
 
       const studentId = extractStudentId(registerResponse.data);
@@ -781,7 +774,7 @@ const RegisterScreen = () => {
 
                   <TouchableOpacity
                     onPress={() => handleSubmit(false)}
-                    disabled={!capturedFace}
+                    disabled={false}
                     activeOpacity={0.85}
                     style={{ marginBottom: 12 }}
                   >
@@ -794,7 +787,7 @@ const RegisterScreen = () => {
                         borderRadius: 16,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        opacity: capturedFace ? 1 : 0.5,
+                        opacity: 1,
                       }}
                     >
                       <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>

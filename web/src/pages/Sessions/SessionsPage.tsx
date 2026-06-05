@@ -91,7 +91,8 @@ const SessionsPage: React.FC = () => {
     queryKey: ['courses-options'],
     queryFn: async () => {
       const res = await coursesApi.list();
-      return (res.data as Array<{ id: string; code?: string; name?: string }>) || [];
+      const data = res.data?.courses || res.data || [];
+      return (data as Array<{ id?: string; course_id?: string; code?: string; name?: string }>) || [];
     },
     enabled: createOpen,
   });
@@ -398,7 +399,7 @@ const SessionsPage: React.FC = () => {
             <select className="field-input" value={form.course_id} onChange={(e) => setField('course_id', e.target.value)}>
               <option value="">{t('selectCourse')}</option>
               {courseOptions.map((c) => (
-                <option key={c.id} value={c.id}>{c.code ? `${c.code} — ${c.name}` : c.name}</option>
+                <option key={c.course_id || c.id} value={c.course_id || c.id}>{c.code ? `${c.code} — ${c.name}` : c.name}</option>
               ))}
             </select>
           </div>
