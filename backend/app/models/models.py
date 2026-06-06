@@ -256,6 +256,7 @@ class AttendanceRecord(Base):
 
     __table_args__ = (
         UniqueConstraint("session_id", "student_id", name="uq_attendance_session_student"),
+        Index("ix_attendance_student_id", "student_id"),
         CheckConstraint("attendance_pct BETWEEN 0 AND 100", name="ck_attendance_pct_range"),
         CheckConstraint("mark BETWEEN 0 AND 10", name="ck_attendance_mark_range"),
         CheckConstraint("method = 'AUTO' OR manual_reason IS NOT NULL", name="ck_attendance_manual_reason_required"),
