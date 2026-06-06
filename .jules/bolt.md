@@ -1,0 +1,3 @@
+## 2025-05-22 - [SQL Aggregation & Indexing]
+**Learning:** Performing aggregations in Python (e.g., `sum(1 for r in records)`) after fetching all records is a major performance anti-pattern. Moving these to SQL-level aggregations (`func.count`, `func.avg`) reduces memory complexity from O(N) to O(1) and significantly reduces database traffic. Additionally, columns used in `WHERE` or `GROUP BY` clauses for analytics (like `student_id`) must have dedicated indexes even if they are part of other unique constraints.
+**Action:** Always prefer SQL-level aggregations for analytics and ensure lookup columns are indexed.
