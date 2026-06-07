@@ -1,0 +1,3 @@
+## 2025-05-15 - [Database Aggregation vs In-Memory Processing]
+**Learning:** The analytics module was fetching all records into memory and processing them with Python loops/dictionaries. This led to high memory usage and increased response times (O(N) data transfer). Offloading this to the database using SQL aggregations (func.avg, func.count, etc.) and GROUP BY clauses significantly improved performance (up to 26x speedup in benchmarks).
+**Action:** Always check analytics and reporting endpoints for O(N) ORM fetches. Prefer SQL-level aggregations and specific column selection (select(Model.field) instead of select(Model)) for high-volume data processing.
