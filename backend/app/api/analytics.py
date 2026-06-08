@@ -4,7 +4,7 @@ from typing import Literal
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user, require_roles
@@ -24,22 +24,29 @@ async def student_analytics(student_id: str, db: AsyncSession = Depends(get_db),
     if not student_id or student_id == "undefined":
         student_id = current.get("id")
 
-    q = select(AttendanceRecord).where(AttendanceRecord.student_id == student_id)
+    # Optimization: Use SQL aggregation instead of fetching all records into memory.
+    # This reduces O(N) memory and data transfer to O(1).
+    q = select(
+        func.count(AttendanceRecord.record_id).label("total_sessions"),
+        func.sum(case((AttendanceRecord.attendance_pct > 0, 1), else_=0)).label("sessions_attended"),
+        func.avg(func.coalesce(AttendanceRecord.attendance_pct, 0)).label("cumulative_pct"),
+        func.avg(func.coalesce(AttendanceRecord.mark, 0)).label("cumulative_mark")
+    ).where(AttendanceRecord.student_id == student_id)
+
     res = await db.execute(q)
-    records = res.scalars().all()
+    row = res.first()
 
-    sessions_attended = sum(1 for r in records if r.attendance_pct is not None and float(r.attendance_pct) > 0)
-    total_records = len(records)
-    cumulative_pct = sum(float(r.attendance_pct or 0) for r in records) / total_records if total_records else 0
-    cumulative_mark = sum(float(r.mark or 0) for r in records) / total_records if total_records else 0
+    total_sessions = row.total_sessions if row and row.total_sessions else 0
+    sessions_attended = int(row.sessions_attended) if row and row.sessions_attended else 0
+    cumulative_pct = float(row.cumulative_pct) if row and row.cumulative_pct else 0.0
+    cumulative_mark = float(row.cumulative_mark) if row and row.cumulative_mark else 0.0
 
-    # Also return percentage for mobile dashboard compatibility
     return {
         "sessions_attended": sessions_attended,
         "cumulative_pct": cumulative_pct,
         "cumulative_mark": cumulative_mark,
         "percentage": round(cumulative_pct, 1),
-        "total_sessions": total_records
+        "total_sessions": total_sessions
     }
 
 
@@ -50,33 +57,46 @@ async def get_reports(
     db: AsyncSession = Depends(get_db),
     current=Depends(require_roles("SUPER_ADMIN")),
 ):
-    q = select(AttendanceRecord)
-    res = await db.execute(q)
-    records = res.scalars().all()
+    # Optimization: Perform aggregation in the database instead of fetching all records.
+    # This prevents memory exhaustion and excessive data transfer for large datasets.
+
     if report_type == "summary":
-        total = len(records)
-        avg_attendance = sum(float(r.attendance_pct or 0) for r in records) / total if total else 0
-        return {"total_records": total, "avg_attendance": avg_attendance}
+        q = select(
+            func.count(AttendanceRecord.record_id).label("total"),
+            func.avg(func.coalesce(AttendanceRecord.attendance_pct, 0)).label("avg_attendance")
+        )
+        res = await db.execute(q)
+        row = res.first()
+        return {
+            "total_records": row.total if row else 0,
+            "avg_attendance": float(row.avg_attendance) if row and row.avg_attendance else 0.0
+        }
 
     if report_type == "attendance_by_student":
-        grouped = {}
-        for r in records:
-            grouped.setdefault(r.student_id, []).append(r.attendance_pct or 0)
+        q = select(
+            AttendanceRecord.student_id,
+            func.avg(func.coalesce(AttendanceRecord.attendance_pct, 0)).label("average_pct")
+        ).group_by(AttendanceRecord.student_id)
+        res = await db.execute(q)
+        rows = res.all()
         return {
             "attendance_by_student": [
-                {"student_id": sid, "average_pct": sum(vals) / len(vals)}
-                for sid, vals in grouped.items()
+                {"student_id": str(row.student_id), "average_pct": float(row.average_pct)}
+                for row in rows
             ]
         }
 
     if report_type == "attendance_by_course":
-        grouped = {}
-        for r in records:
-            grouped.setdefault(r.session_id, []).append(r.attendance_pct or 0)
+        q = select(
+            AttendanceRecord.session_id,
+            func.avg(func.coalesce(AttendanceRecord.attendance_pct, 0)).label("average_pct")
+        ).group_by(AttendanceRecord.session_id)
+        res = await db.execute(q)
+        rows = res.all()
         return {
             "attendance_by_course": [
-                {"session_id": sid, "average_pct": sum(vals) / len(vals)}
-                for sid, vals in grouped.items()
+                {"session_id": str(row.session_id), "average_pct": float(row.average_pct)}
+                for row in rows
             ]
         }
 
