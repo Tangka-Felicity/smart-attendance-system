@@ -7,11 +7,29 @@ async def send_push_notification(
     body: str,
     data: dict = {}
 ):
-    if not settings.FCM_SERVER_KEY:
+    """
+    Sends push notifications to a list of FCM tokens using batching.
+    Optimized to use a single client and multicast messages (registration_ids).
+    """
+    if not settings.FCM_SERVER_KEY or not fcm_tokens:
         return
 
-    for token in fcm_tokens:
-        async with httpx.AsyncClient() as client:
+    # Unique tokens to avoid redundant sends
+    unique_tokens = list(set(fcm_tokens))
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        # FCM Legacy HTTP API allows up to 1000 registration_ids per request
+        for i in range(0, len(unique_tokens), 1000):
+            batch = unique_tokens[i:i+1000]
+            payload = {
+                "registration_ids": batch,
+                "notification": {
+                    "title": title,
+                    "body": body,
+                    "sound": "default"
+                },
+                "data": data
+            }
             try:
                 await client.post(
                     "https://fcm.googleapis.com/fcm/send",
@@ -19,11 +37,8 @@ async def send_push_notification(
                         "Authorization": f"key={settings.FCM_SERVER_KEY}",
                         "Content-Type": "application/json"
                     },
-                    json={
-                        "to": token,
-                        "notification": {"title": title, "body": body},
-                        "data": data
-                    }
+                    json=payload
                 )
             except Exception as e:
-                print(f"Error sending push: {e}")
+                # Log error but don't crash the background task/request
+                print(f"Error sending FCM batch: {e}")
