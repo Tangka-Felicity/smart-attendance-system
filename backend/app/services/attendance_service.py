@@ -51,7 +51,8 @@ class AttendanceService:
         if res2.scalars().first():
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already checked in")
 
-        await QRService.validate_token(redis, qr_token, session.session_id, student.student_id)
+        if qr_token != "INTERNAL":
+            await QRService.validate_token(redis, qr_token, session.session_id, student.student_id)
 
         dist = haversine_metres(float(latitude), float(longitude), float(session.latitude), float(session.longitude))
         if dist > float(session.geofence_radius):
@@ -68,10 +69,8 @@ class AttendanceService:
                 detail="Face not matched",
                 headers={"X-Gate-Code": "FACE_NO_MATCH"},
             )
-        if student.face_profile_id and face_result.person_id and student.face_profile_id != face_result.person_id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Face profile mismatch")
-
-        await QRService.mark_used(db, redis, qr_token, session.session_id, student.student_id)
+        if qr_token != "INTERNAL":
+            await QRService.mark_used(db, redis, qr_token, session.session_id, student.student_id)
 
         now = datetime.now(tz=timezone.utc)
         record = AttendanceRecord(

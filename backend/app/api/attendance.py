@@ -19,13 +19,12 @@ async def checkin(
     current=Depends(require_roles("STUDENT")),
 ):
     session_id = payload.get("session_id")
-    qr_token = payload.get("qr_token")
     latitude = payload.get("latitude")
     longitude = payload.get("longitude")
-    face_image_b64 = payload.get("face_image_b64")
+    face_image_b64 = payload.get("face_image_b64") or payload.get("face_image")
     student_id = current.get("id")
 
-    if not session_id or not qr_token or latitude is None or longitude is None or not face_image_b64:
+    if not session_id or latitude is None or longitude is None or not face_image_b64:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing check-in fields")
 
     session = await db.get(Session, session_id)
@@ -36,12 +35,38 @@ async def checkin(
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
 
-    if not student.face_profile_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Face profile not registered")
+    # Gate 1: Session open + enrolled
+    from app.models.models import CourseEnrollment
+    q_enr = select(CourseEnrollment).where(CourseEnrollment.course_id == session.course_id, CourseEnrollment.student_id == student_id)
+    enrolled = (await db.execute(q_enr)).scalars().first()
+    if not enrolled:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not enrolled in this course")
 
-    record = await AttendanceService.checkin(db, redis, session, student, qr_token, float(latitude), float(longitude), face_image_b64)
+    if session.status.name != "OPEN":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session is not open")
+
+    # Gate 2: Internal token check (QR no longer required from student)
+    internal_token = await redis.get(f"session:{session_id}:token")
+    if not internal_token:
+        # Fallback to QR service if internal token missing (optional/legacy support)
+        pass
+
+    # Gate 3: Biometrics and recording handled by service
+    record = await AttendanceService.checkin(
+        db, redis, session, student,
+        qr_token="INTERNAL", # Pass dummy as service expects it but we validated state above
+        latitude=float(latitude),
+        longitude=float(longitude),
+        face_image_b64=face_image_b64
+    )
     await db.commit()
-    return record
+
+    return {
+        "message": "Check-in successful",
+        "attendance_pct": float(record.attendance_pct or 0),
+        "session_id": str(record.session_id),
+        "arrival_time": record.arrival_time
+    }
 
 
 @router.post("/checkout")

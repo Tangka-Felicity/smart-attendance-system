@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.dependencies import get_redis
 from app.workers.anomaly_worker import run_anomaly_checks
 from app.workers.qr_worker import refresh_all_open_sessions
+from app.services.scheduler_service import start_scheduler
 
 
 @asynccontextmanager
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI):
         replace_existing=True,
     )
     scheduler.start()
+    start_scheduler()
     await get_redis()
     try:
         yield

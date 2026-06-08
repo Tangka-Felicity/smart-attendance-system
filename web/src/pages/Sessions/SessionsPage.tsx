@@ -113,10 +113,12 @@ const SessionsPage: React.FC = () => {
     },
     onSuccess: (data, sessionId) => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      const session = sessions.find((s) => s.id === sessionId);
+      const code = data?.session_code || session?.session_code || '';
       setSelectedQrData(data?.qr_code || data?.qr || data || '');
       setQrModalOpen(true);
-      setSelectedSessionTitle(sessions.find((s) => s.id === sessionId)?.course_name || t('sessions'));
-      toast.success(t('sessionOpenedSuccess'));
+      setSelectedSessionTitle(session?.course_name || t('sessions'));
+      toast.success(`${t('sessionOpenedSuccess')}${code ? ' - Code: ' + code : ''}`);
     },
     onError: (err: any) => {
       toast.error(t('failedToOpenSession') + ': ' + String(err));

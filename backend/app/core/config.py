@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     FACEPP_API_KEY: str = ""
     FACEPP_API_SECRET: str = ""
     FACEPP_API_CONFIDENCE_THRESHOLD: float = 70.0
+    FCM_SERVER_KEY: str = ""
     FCM_PROJECT_ID: str = ""
     FCM_SERVICE_ACCOUNT_JSON: str = "serviceAccountKey.json"
     CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"]

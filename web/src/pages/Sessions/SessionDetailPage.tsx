@@ -534,4 +534,3 @@ export const SessionDetailPage: React.FC = () => {
 };
 
 export default SessionDetailPage;
-
