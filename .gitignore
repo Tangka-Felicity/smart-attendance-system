@@ -6,6 +6,3 @@ node_modules
 dist
 serviceAccountKey.json
 *.pyc
-
-.vercel
-.env*

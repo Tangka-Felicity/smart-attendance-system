@@ -10,6 +10,7 @@ import { setThemeMode } from './src/store/slices/themeSlice';
 import RootNavigator from './src/navigation/RootNavigator';
 import { Colors } from './src/theme';
 import { registerForPushNotifications, addNotificationListeners } from './src/services/notificationService';
+import { navigate } from './src/navigation/navigationRef';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,7 +39,22 @@ export default function App() {
     registerForPushNotifications();
     const unsubscribe = addNotificationListeners(
       () => {},
-      () => {}
+      (response) => {
+        const data = response.notification.request.content.data;
+        if (data?.action === 'checkin') {
+          navigate('StudentTabs', {
+            screen: 'HomeTab',
+            params: {
+              screen: 'CheckIn',
+              params: {
+                session_id: data.session_id,
+                course_name: data.course_name,
+                venue: data.venue,
+              },
+            },
+          });
+        }
+      }
     );
     return unsubscribe;
   }, []);

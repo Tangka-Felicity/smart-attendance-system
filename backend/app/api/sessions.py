@@ -150,14 +150,71 @@ async def open_session(
     redis=Depends(get_redis),
     current=Depends(require_roles("SUPER_ADMIN", "LECTURER")),
 ):
+    import random
+    import string
+
     session = await db.get(Session, session_id)
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
     session.status = "OPEN" # type: ignore
+
+    # Generate 8-character alphanumeric code if not already set
+    if not session.session_code:
+        course = await db.get(Course, session.course_id)
+        prefix = course.code[:3].upper() if course and course.code else "SES"
+        random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        session.session_code = f"{prefix}-{random_part}"
+
     await db.flush()
-    token = await QRService.create_token(db, redis, session)
+
+    # Also set the Redis internal token for the auto-checkin
+    import uuid
+    token = str(uuid.uuid4())
+    key = f"session:{session_id}:token"
+    # Duration based on end_time
+    now = datetime.now(timezone.utc)
+    duration = int((session.end_time - now).total_seconds())
+    await redis.set(key, token, ex=max(1, duration))
+
+    # Send FCM notifications
+    from app.services.scheduler_service import auto_open_sessions
+    # We can't easily call the job directly but we can reuse the logic
+    # or just let the job pick it up if it's pending, but here it's already triggered manually
+
+    # Notify students logic (DRY later)
+    from app.models.models import CourseEnrollment, User
+    from app.services.fcm_service import send_push_notification
+    sq = select(User.fcm_token).join(CourseEnrollment, User.user_id == CourseEnrollment.student_id).where(
+        CourseEnrollment.course_id == session.course_id,
+        User.fcm_token.is_not(None)
+    )
+    tokens = (await db.execute(sq)).scalars().all()
+    if tokens:
+        course = await db.get(Course, session.course_id)
+        await send_push_notification(
+            tokens,
+            "Class Started",
+            f"{course.name} has started — tap to check in",
+            {
+                "action": "checkin",
+                "session_id": str(session.session_id),
+                "course_name": course.name,
+                "venue": session.venue_name
+            }
+        )
+
+    await db.commit()
+
+    qr_token = await QRService.create_token(db, redis, session)
     ttl = await QRService.get_ttl(redis, session_id)
-    return {"status": "OPEN", "qr_token": token, "ttl_seconds": ttl}
+
+    return {
+        "status": "OPEN",
+        "session_code": session.session_code,
+        "qr_token": qr_token,
+        "ttl_seconds": ttl
+    }
 
 
 @router.post("/{session_id}/close")

@@ -3,20 +3,27 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Vibration,
+  Dimensions,
+  Image,
+  TextInput,
 } from 'react-native';
 import { Camera } from 'expo-camera';
 import * as Location from 'expo-location';
 import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
-import { Colors, Spacing, Typography } from '../../../theme';
-import { StepIndicator } from '../../../components';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Spacing, Typography, Radius } from '../../../theme';
+import { Button, ThemedScreen, GradientHeader } from '../../../components';
 import { useTranslation } from '../../../hooks/useTranslation';
+import { attendanceApi } from '../../../api';
+import { hapticLight, hapticSuccess, hapticError } from '../../../utils/haptics';
 
-const frameSize = 260;
-const animationDuration = 1200;
+const { width } = Dimensions.get('window');
+
+type CheckInStep = 'location' | 'face' | 'verifying' | 'success' | 'manual' | 'code_entry';
 
 const CheckInScreen = () => {
   const navigation = useNavigation();
@@ -24,143 +31,386 @@ const CheckInScreen = () => {
   const isFocused = useIsFocused();
   const { t } = useTranslation();
   const cameraRef = useRef<Camera | null>(null);
+
+  const [step, setStep] = useState<CheckInStep>('location');
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [locationStatus, setLocationStatus] = useState<'checking' | 'ok' | 'fail'>('checking');
-  const [locationData, setLocationData] = useState<Location.LocationObject | null>(null);
-  const [scanned, setScanned] = useState(false);
-  const pulse = useRef(new Animated.Value(0)).current;
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [faceImage, setFaceImage] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(2);
+  const [loading, setLoading] = useState(false);
+  const [resultData, setResultData] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [manualCode, setManualCode] = useState('');
 
   const session = (route.params as any)?.session;
+  const sessionId = (route.params as any)?.session_id || session?.session_id || session?.id;
+  const courseName = (route.params as any)?.course_name || session?.course_name || session?.name;
+  const venueName = (route.params as any)?.venue_name || (route.params as any)?.venue || session?.venue_name || session?.venue;
 
   useEffect(() => {
-    const requestPermissions = async () => {
-      const camera = await Camera.requestCameraPermissionsAsync();
-      setHasCameraPermission(camera.status === 'granted');
+    const init = async () => {
+      const { status: cStatus } = await Camera.requestCameraPermissionsAsync();
+      setHasCameraPermission(cStatus === 'granted');
 
-      const location = await Location.requestForegroundPermissionsAsync();
-      if (location.status === 'granted') {
-        try {
-          const coords = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Highest });
-          setLocationData(coords);
-          setLocationStatus('ok');
-        } catch {
-          setLocationStatus('fail');
-        }
-      } else {
-        setLocationStatus('fail');
+      const { status: lStatus } = await Location.requestForegroundPermissionsAsync();
+      if (lStatus !== 'granted') {
+        setErrorMsg(t('locationRequired'));
+        return;
+      }
+
+      try {
+        const currentLoc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setLocation(currentLoc);
+        setStep('face');
+      } catch (err) {
+        setErrorMsg(t('unableToCaptureYourLocationPleaseTryAgain'));
       }
     };
 
-    requestPermissions();
-  }, []);
+    if (isFocused) {
+      init();
+    }
+  }, [isFocused]);
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: animationDuration,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0,
-          duration: animationDuration,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [pulse]);
+    if (step === 'face' && countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (step === 'face' && countdown === 0 && !faceImage) {
+      captureFace();
+    }
+  }, [step, countdown]);
 
-  const handleBarCodeScanned = async ({ data }: { data: string }) => {
-    if (scanned || !session) return;
-    setScanned(true);
-    Vibration.vibrate();
+  const captureFace = async () => {
+    if (!cameraRef.current) return;
+    try {
+      hapticLight();
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5, base64: true });
+      setFaceImage(photo.base64 || null);
+      setStep('verifying');
+      performCheckIn(photo.base64);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(t('somethingWentWrong'));
+    }
+  };
 
-    if (!locationData) {
-      Alert.alert(t('locationRequired'), t('unableToCaptureYourLocationPleaseTryAgain'));
-      setScanned(false);
-      return;
+  const performCheckIn = async (b64: string | undefined | null, code?: string) => {
+    if ((!sessionId && !code) || !location || !b64) return;
+
+    setLoading(true);
+    try {
+      const payload: any = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        face_image: b64,
+      };
+      if (code) {
+        payload.session_code = code;
+      } else {
+        payload.session_id = sessionId;
+      }
+
+      const response = await attendanceApi.checkin(payload);
+
+      hapticSuccess();
+      setResultData(response.data);
+      setStep('success');
+
+      setTimeout(() => {
+        navigation.goBack();
+      }, 3000);
+    } catch (err: any) {
+      hapticError();
+      const detail = err?.response?.data?.detail || t('somethingWentWrong');
+      setErrorMsg(detail);
+      setStep('manual');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderContent = () => {
+    if (errorMsg && step !== 'manual' && step !== 'code_entry') {
+      return (
+        <View style={styles.stateContainer}>
+          <Ionicons name="alert-circle" size={80} color={Colors.danger} />
+          <Text style={styles.errorText}>{errorMsg}</Text>
+          <Button title={t('retry')} onPress={() => { setErrorMsg(null); setStep('location'); }} style={{ marginTop: 20 }} />
+        </View>
+      );
     }
 
-    (navigation as any).navigate('Face', {
-      session,
-      qrToken: data,
-      latitude: locationData.coords.latitude,
-      longitude: locationData.coords.longitude,
-    });
-  };
+    switch (step) {
+      case 'location':
+        return (
+          <View style={styles.stateContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.statusText}>{t('verifying')} {t('location')}</Text>
+          </View>
+        );
 
-  const pulseStyle = {
-    transform: [
-      {
-        scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }),
-      },
-    ],
-    opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }),
-  };
+      case 'face':
+        return (
+          <View style={styles.cameraContainer}>
+            {isFocused && (
+              <Camera
+                ref={cameraRef}
+                style={StyleSheet.absoluteFill}
+                type={'front' as any}
+              />
+            )}
+            <View style={styles.overlay}>
+              <View style={styles.faceFrame} />
+              <View style={styles.countdownContainer}>
+                <Text style={styles.countdownText}>{countdown}</Text>
+              </View>
+              <Text style={styles.instructionText}>{t('lookDirectlyAtTheCameraAndKeepYourFaceWithinTheOval')}</Text>
+            </View>
+          </View>
+        );
 
-  if (hasCameraPermission === false) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-        <Text style={[Typography.body, { color: Colors.textPrimary }]}>{t('cameraPermissionRequiredToScanTheSessionQRCode')}</Text>
-      </View>
-    );
-  }
+      case 'verifying':
+        return (
+          <View style={styles.stateContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.statusText}>{t('verifying')}</Text>
+          </View>
+        );
+
+      case 'success':
+        return (
+          <View style={styles.stateContainer}>
+            <Ionicons name="checkmark-circle" size={100} color={Colors.success} />
+            <Text style={styles.successTitle}>{t('checkedInSuccessfully')}</Text>
+            <Text style={styles.attendancePct}>
+              {t('attendancePercent')}: {Math.round(resultData?.attendance_pct || 0)}%
+            </Text>
+          </View>
+        );
+
+      case 'manual':
+        return (
+          <View style={styles.stateContainer}>
+            <Ionicons name="camera-reverse-outline" size={80} color={Colors.textMuted} />
+            <Text style={styles.errorText}>{errorMsg || t('somethingWentWrong')}</Text>
+            <Button title={t('tryAgain')} onPress={() => { setErrorMsg(null); setCountdown(2); setStep('location'); }} style={{ width: '100%', marginTop: 20 }} />
+            <Button
+                title={t('manualMark')}
+                onPress={() => setStep('code_entry')}
+                variant="outline"
+                style={{ width: '100%', marginTop: 12 }}
+            />
+            <TouchableOpacity style={styles.manualBtn} onPress={() => navigation.goBack()}>
+               <Text style={{ color: Colors.primary, fontWeight: '600' }}>{t('cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        );
+
+      case 'code_entry':
+        return (
+          <View style={styles.stateContainer}>
+            <Text style={[styles.statusText, { marginBottom: 20 }]}>{t('enterSessionCode') || 'Enter Session Code'}</Text>
+            <View style={styles.inputContainer}>
+               <TextInput
+                 style={styles.codeInput}
+                 placeholder="e.g. SE3-4829"
+                 placeholderTextColor={Colors.textMuted}
+                 value={manualCode}
+                 onChangeText={setManualCode}
+                 autoCapitalize="characters"
+               />
+            </View>
+            <Button
+              title={t('submit')}
+              onPress={() => performCheckIn(faceImage || "MANUAL_PLACEHOLDER", manualCode)}
+              isLoading={loading}
+              fullWidth
+              style={{ marginTop: 20 }}
+            />
+            <TouchableOpacity style={styles.manualBtn} onPress={() => setStep('manual')}>
+               <Text style={{ color: Colors.primary, fontWeight: '600' }}>{t('back')}</Text>
+            </TouchableOpacity>
+          </View>
+        );
+    }
+  };
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <View style={{ backgroundColor: Colors.primary, paddingTop: Spacing.xxl, paddingBottom: Spacing.lg, paddingHorizontal: Spacing.lg }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: Spacing.sm }}>
-            <Text style={{ color: Colors.white, fontSize: 16 }}>{t('cancel')}</Text>
+    <ThemedScreen edges={['top']}>
+      <GradientHeader>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="close" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={[Typography.heading3, { color: Colors.white }]}>{t('scanQRCode')}</Text>
-          <View style={{ width: 48 }} />
+          <Text style={styles.headerTitle}>{t('checkIn')}</Text>
+          <View style={{ width: 24 }} />
         </View>
-      </View>
 
-      <StepIndicator currentStep={1} />
-
-      <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        {isFocused ? (
-          <Camera
-            style={{ flex: 1 }}
-            ref={(ref) => (cameraRef.current = ref)}
-            onBarCodeScanned={handleBarCodeScanned}
-            barCodeScannerSettings={{ barCodeTypes: [(Camera.Constants as any).BarCodeType.qr] }}
-            ratio="16:9"
-          >
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <Animated.View
-                style={[
-                  {
-                    width: frameSize,
-                    height: frameSize,
-                    borderRadius: 24,
-                    borderWidth: 2,
-                    borderColor: Colors.primary,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                  },
-                  pulseStyle,
-                ]}
-              >
-                <View style={{ position: 'absolute', top: 0, left: 0, width: 40, height: 40, borderTopWidth: 4, borderLeftWidth: 4, borderColor: Colors.primary }} />
-                <View style={{ position: 'absolute', top: 0, right: 0, width: 40, height: 40, borderTopWidth: 4, borderRightWidth: 4, borderColor: Colors.primary }} />
-                <View style={{ position: 'absolute', bottom: 0, left: 0, width: 40, height: 40, borderBottomWidth: 4, borderLeftWidth: 4, borderColor: Colors.primary }} />
-                <View style={{ position: 'absolute', bottom: 0, right: 0, width: 40, height: 40, borderBottomWidth: 4, borderRightWidth: 4, borderColor: Colors.primary }} />
-              </Animated.View>
-              <Text style={[Typography.body, { color: Colors.white, marginTop: Spacing.lg }]}>{t('scanQRCode')}</Text>
-            </View>
-          </Camera>
-        ) : (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={Colors.primary} />
+        <View style={styles.sessionCard}>
+          <Text style={styles.courseName}>{courseName || t('session')}</Text>
+          <View style={styles.venueRow}>
+            <Ionicons name="location" size={14} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.venueText}>{venueName || t('toBeAnnounced')}</Text>
           </View>
-        )}
+        </View>
+      </GradientHeader>
+
+      <View style={styles.content}>
+        {renderContent()}
       </View>
-    </View>
+
+      {step === 'manual' && (
+        <View style={styles.footer}>
+           <Text style={styles.footerMuted}>{t('manualMark')}</Text>
+        </View>
+      )}
+    </ThemedScreen>
   );
 };
+
+const styles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  sessionCard: {
+    marginTop: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 16,
+    padding: 16,
+  },
+  courseName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  venueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 4,
+  },
+  venueText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+  },
+  content: {
+    flex: 1,
+    marginTop: -20,
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+  stateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  statusText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+  },
+  cameraContainer: {
+    flex: 1,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  faceFrame: {
+    width: width * 0.7,
+    height: width * 0.9,
+    borderRadius: width * 0.45,
+    borderWidth: 2,
+    borderColor: '#fff',
+    backgroundColor: 'transparent',
+  },
+  countdownContainer: {
+    position: 'absolute',
+    top: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countdownText: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  instructionText: {
+    position: 'absolute',
+    bottom: 40,
+    width: '80%',
+    textAlign: 'center',
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 12,
+    borderRadius: 12,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.text,
+    marginTop: 24,
+  },
+  attendancePct: {
+    fontSize: 18,
+    color: Colors.success,
+    fontWeight: '700',
+    marginTop: 8,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.danger,
+    textAlign: 'center',
+    marginTop: 16,
+    fontWeight: '600',
+  },
+  manualBtn: {
+    marginTop: 16,
+    padding: 12,
+  },
+  footer: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  footerMuted: {
+    color: Colors.textMuted,
+    fontSize: 12,
+  },
+  inputContainer: {
+    width: '100%',
+    backgroundColor: Colors.card,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 16,
+  },
+  codeInput: {
+    height: 54,
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+    textAlign: 'center',
+  }
+});
 
 export default CheckInScreen;

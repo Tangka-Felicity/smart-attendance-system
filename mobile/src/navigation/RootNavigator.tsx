@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
+import { navigationRef } from './navigationRef';
 import StudentTabs from './StudentTabs';
 import LecturerTabs from './LecturerTabs';
 import LoginScreen from '../screens/Auth/LoginScreen';
@@ -63,7 +64,7 @@ export const RootNavigator = () => {
   const appTheme = useMemo(() => buildTheme(themeMode), [themeMode]);
 
   return (
-    <NavigationContainer theme={appTheme}>
+    <NavigationContainer theme={appTheme} ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
           <>

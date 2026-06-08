@@ -19,12 +19,9 @@ import type { TranslationKey } from '../../i18n/translations';
 
 interface Session {
   id: string;
-  session_id?: string;
-  course_id?: string;
   course_name?: string;
   course?: { code?: string; name?: string };
   venue?: string;
-  venue_name?: string;
   start_time?: string;
   end_time?: string;
   category?: string;
@@ -94,29 +91,10 @@ const SessionsPage: React.FC = () => {
     queryKey: ['courses-options'],
     queryFn: async () => {
       const res = await coursesApi.list();
-      const data = res.data?.courses || res.data || [];
-      return (data as Array<{ id?: string; course_id?: string; code?: string; name?: string }>) || [];
+      return (res.data as Array<{ id: string; code?: string; name?: string }>) || [];
     },
     enabled: createOpen,
   });
-
-  const { data: allCourses = [] } = useQuery({
-    queryKey: ['courses-all'],
-    queryFn: async () => {
-      const res = await coursesApi.list();
-      const data = res.data?.courses || res.data || [];
-      return (data as Array<{ id?: string; course_id?: string; name?: string }>) || [];
-    },
-  });
-
-  const coursesMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    (allCourses || []).forEach((c: any) => {
-      const key = c.course_id || c.id;
-      if (key && c.name) map[key] = c.name;
-    });
-    return map;
-  }, [allCourses]);
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['sessions', statusTab],
@@ -135,10 +113,12 @@ const SessionsPage: React.FC = () => {
     },
     onSuccess: (data, sessionId) => {
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      const session = sessions.find((s) => s.id === sessionId);
+      const code = data?.session_code || session?.session_code || '';
       setSelectedQrData(data?.qr_code || data?.qr || data || '');
       setQrModalOpen(true);
-      setSelectedSessionTitle(sessions.find((s) => s.id === sessionId)?.course_name || t('sessions'));
-      toast.success(t('sessionOpenedSuccess'));
+      setSelectedSessionTitle(session?.course_name || t('sessions'));
+      toast.success(`${t('sessionOpenedSuccess')}${code ? ' - Code: ' + code : ''}`);
     },
     onError: (err: any) => {
       toast.error(t('failedToOpenSession') + ': ' + String(err));
@@ -227,9 +207,9 @@ const SessionsPage: React.FC = () => {
     return sessions.filter((session) => {
       const query = searchQuery.trim().toLowerCase();
       if (!query) return true;
-      const courseName = (session.course_name || session.course?.name || coursesMap[session.course_id || ''] || '').toLowerCase();
+      const courseName = (session.course_name || session.course?.name || '').toLowerCase();
       const courseCode = (session.course?.code || '').toLowerCase();
-      const venue = (session.venue_name || session.venue || '').toLowerCase();
+      const venue = (session.venue || '').toLowerCase();
       return courseName.includes(query) || courseCode.includes(query) || venue.includes(query);
     });
   }, [sessions, searchQuery]);
@@ -240,16 +220,12 @@ const SessionsPage: React.FC = () => {
       label: t('course'),
       render: (_: unknown, row: Session) => (
         <div className="space-y-1">
-          <div className="font-semibold text-primary">{row.course_name || coursesMap[row.course_id || ''] || row.course?.name || '—'}</div>
+          <div className="font-semibold text-primary">{row.course_name || row.course?.name || '—'}</div>
           <div className="text-xs text-secondary">{row.course?.code || ''}</div>
         </div>
       ),
     },
-    {
-      key: 'venue',
-      label: t('venue'),
-      render: (_: unknown, row: Session) => (row.venue_name || row.venue || '—'),
-    },
+    { key: 'venue', label: t('venue') },
     {
       key: 'date',
       label: t('date'),
@@ -424,7 +400,7 @@ const SessionsPage: React.FC = () => {
             <select className="field-input" value={form.course_id} onChange={(e) => setField('course_id', e.target.value)}>
               <option value="">{t('selectCourse')}</option>
               {courseOptions.map((c) => (
-                <option key={c.course_id || c.id} value={c.course_id || c.id}>{c.code ? `${c.code} — ${c.name}` : c.name}</option>
+                <option key={c.id} value={c.id}>{c.code ? `${c.code} — ${c.name}` : c.name}</option>
               ))}
             </select>
           </div>

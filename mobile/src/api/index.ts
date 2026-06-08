@@ -6,9 +6,11 @@ export const authApi = {
     client.post('/auth/login/', { email, password }),
   register: (body: {
     name: string;
-    student_number: string;
+    matricule: string;
     email: string;
+    phone?: string;
     password: string;
+    role: string;
   }) =>
     client.post('/auth/register/', body),
   firstLoginChangePassword: (body: {
@@ -78,11 +80,11 @@ export const sessionApi = {
 // Attendance API
 export const attendanceApi = {
   checkin: (body: {
-    session_id: string;
-    qr_token: string;
+    session_id?: string;
+    session_code?: string;
     latitude: number;
     longitude: number;
-    face_image_b64: string;
+    face_image: string;
   }) =>
     client.post('/attendance/checkin/', body),
   checkout: (body: {
@@ -101,19 +103,27 @@ export const notificationApi = {
   list: (unread_only?: boolean) =>
     client.get('/notifications/', { params: { unread_only } }),
   markRead: (id: string) =>
-    client.put(`/notifications/${id}/read`, {}),
+    client.put(`/notifications/${id}/read/`, {}),
 };
 
 // Analytics API
 export const analyticsApi = {
   studentDashboard: (student_id: string) =>
-    client.get(`/analytics/student/${student_id}`),
+    client.get(`/analytics/student/${student_id}/`),
 };
 
 // Course API
 export const courseApi = {
   list: () =>
     client.get('/courses/'),
+  listAvailable: () =>
+    client.get('/courses/available/'),
+  listMy: () =>
+    client.get('/courses/my/'),
+  enroll: (course_id: string) =>
+    client.post(`/courses/${course_id}/enroll/`, {}),
+  unenroll: (course_id: string) =>
+    client.delete(`/courses/${course_id}/enroll/`),
   getStudents: (course_id: string) =>
     client.get(`/courses/${course_id}/students/`),
 };

@@ -95,7 +95,7 @@ const CoursesPage: React.FC = () => {
     longitude: '',
     geofence_radius: '50',
     grace_period: '15',
-    category: 'regular',
+    category: 'Regular',
     coordinator_id: '',
   });
 
@@ -345,7 +345,7 @@ const CoursesPage: React.FC = () => {
       longitude: Number(newSessionForm.longitude) || 0,
       geofence_radius: Number(newSessionForm.geofence_radius || 50),
       grace_period: Number(newSessionForm.grace_period || 15),
-      category: newSessionForm.category,
+      category: newSessionForm.category.toUpperCase(),
       coordinator_id: newSessionForm.coordinator_id || null,
     });
   };
@@ -562,9 +562,9 @@ const CoursesPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <input placeholder={t('graceMin')} value={newSessionForm.grace_period} onChange={(e) => setNewSessionForm({ ...newSessionForm, grace_period: e.target.value })} className="px-3 py-2 border rounded-lg" />
             <select value={newSessionForm.category} onChange={(e) => setNewSessionForm({ ...newSessionForm, category: e.target.value })} className="px-3 py-2 border rounded-lg">
-              <option value="mandatory">{t('mandatory')}</option>
-              <option value="regular">{t('regular')}</option>
-              <option value="optional">{t('optional')}</option>
+              <option value="Mandatory">{t('mandatory')}</option>
+              <option value="Regular">{t('regular')}</option>
+              <option value="Optional">{t('optional')}</option>
             </select>
           </div>
           <div>

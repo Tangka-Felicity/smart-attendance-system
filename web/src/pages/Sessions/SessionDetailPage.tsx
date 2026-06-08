@@ -21,8 +21,6 @@ interface SessionDetail {
   course_name?: string;
   course?: { code?: string; name?: string };
   venue?: string;
-  venue_name?: string;
-  course_id?: string;
   start_time?: string;
   end_time?: string;
   status?: 'OPEN' | 'PENDING' | 'CLOSED';
@@ -79,29 +77,9 @@ export const SessionDetailPage: React.FC = () => {
     queryKey: ['session', id],
     queryFn: async () => {
       const res = await sessionsApi.get(id || '');
-      const data = res.data || {};
-      // Normalize backend fields: session_id -> id, venue_name -> venue_name
-      const normalized: any = {
-        ...data,
-        id: data.id || data.session_id || data.sessionId,
-        venue_name: data.venue_name || data.venue || undefined,
-        course_id: data.course_id || data.courseId || undefined,
-      };
-      return normalized as SessionDetail;
+      return res.data as SessionDetail;
     },
     enabled: !!id,
-  });
-
-  const session = sessionQuery.data;
-
-  const courseQuery = useQuery({
-    queryKey: ['course', session?.course_id],
-    queryFn: async () => {
-      if (!session?.course_id) return null;
-      const res = await (await import('../../api/client')).coursesApi.get(session.course_id);
-      return res.data;
-    },
-    enabled: !!session?.course_id && !session?.course_name,
   });
 
   const attendanceQuery = useQuery({
@@ -163,8 +141,7 @@ export const SessionDetailPage: React.FC = () => {
     enabled: manualSearch.trim().length > 0,
   });
 
-  // prefer course_name from session, fall back to fetched course
-  const courseName = session?.course_name || courseQuery.data?.name || session?.course?.name;
+  const session = sessionQuery.data;
   const attendanceRecords = attendanceQuery.data || [];
 
   const filteredAttendance = useMemo(() => {
@@ -304,8 +281,8 @@ export const SessionDetailPage: React.FC = () => {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Course</p>
-                    <h2 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>{courseName || 'Course not available'}</h2>
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{session?.course?.code || courseQuery.data?.code || ''}</p>
+                    <h2 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>{session?.course_name || session?.course?.name || 'Course not available'}</h2>
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{session?.course?.code || ''}</p>
                   </div>
                   {statusBadge(session?.status)}
                 </div>
@@ -313,7 +290,7 @@ export const SessionDetailPage: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4 mt-6">
                   <div>
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Venue</p>
-                    <p className="text-base font-medium" style={{ color: 'var(--text)' }}>{session?.venue_name || session?.venue || '—'}</p>
+                    <p className="text-base font-medium" style={{ color: 'var(--text)' }}>{session?.venue || '—'}</p>
                   </div>
                   <div>
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Category</p>
@@ -557,4 +534,3 @@ export const SessionDetailPage: React.FC = () => {
 };
 
 export default SessionDetailPage;
-

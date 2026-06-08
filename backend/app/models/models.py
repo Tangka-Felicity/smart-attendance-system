@@ -182,6 +182,7 @@ class Session(Base):
     status: Mapped[SessionStatus] = mapped_column(
         SAEnum(SessionStatus, name="session_status", create_type=True), nullable=False, server_default=SessionStatus.PENDING.value
     )
+    session_code: Mapped[str] = mapped_column(String(10), nullable=True, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     course = relationship("Course", back_populates="sessions")

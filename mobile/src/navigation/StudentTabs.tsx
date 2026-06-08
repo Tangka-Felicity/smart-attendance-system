@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../hooks/useTranslation';
 import CustomTabBar from '../components/CustomTabBar';
 import HomeScreen from '../screens/Home/HomeScreen';
+import CoursesScreen from '../screens/Home/CoursesScreen';
 import CheckInScreen from '../screens/Home/CheckIn/CheckInScreen';
 import FaceScreen from '../screens/Home/CheckIn/FaceScreen';
 import ConfirmedScreen from '../screens/Home/CheckIn/ConfirmedScreen';
@@ -38,6 +39,14 @@ const StudentTabs = () => {
         options={{
           tabBarLabel: t('sessions'),
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="CoursesTab"
+        component={CoursesScreen}
+        options={{
+          tabBarLabel: t('courses'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="book-outline" size={size} color={color} />,
         }}
       />
       <Tab.Screen
