@@ -1,7 +1,7 @@
-import httpx
 from dataclasses import dataclass
 from typing import Optional, List
 from app.core.config import settings
+from app.utils.http_client import HTTPClient
 
 @dataclass
 class FaceIdentifyResult:
@@ -21,12 +21,13 @@ class FacePlusPlusService:
     async def _request(cls, endpoint: str, data: dict) -> dict:
         data["api_key"] = settings.FACEPP_API_KEY
         data["api_secret"] = settings.FACEPP_API_SECRET
-        async with httpx.AsyncClient() as client:
-            try:
-                resp = await client.post(f"{cls.BASE_URL}/{endpoint}", data=data, timeout=20.0)
-                return resp.json()
-            except Exception as e:
-                return {"error_message": str(e)}
+        client = await HTTPClient.get_client()
+        try:
+            # Reusing shared client to avoid connection overhead
+            resp = await client.post(f"{cls.BASE_URL}/{endpoint}", data=data, timeout=20.0)
+            return resp.json()
+        except Exception as e:
+            return {"error_message": str(e)}
 
     @classmethod
     async def register_face(cls, course_id: str, student_id: str, face_image_b64: str) -> Optional[str]:
