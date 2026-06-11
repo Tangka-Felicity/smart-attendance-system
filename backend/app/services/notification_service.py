@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.models import Notification, NotificationType, User, AttendanceRecord
+from app.utils.http_client import HTTPClient
 
 
 class NotificationService:
@@ -52,8 +53,9 @@ class NotificationService:
                 }
             }
             url = cls.FCM_URL.format(project_id=settings.FCM_PROJECT_ID)
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                await client.post(url, headers=headers, json=payload)
+            # Optimized: Use shared HTTP client
+            client = HTTPClient.get_client()
+            await client.post(url, headers=headers, json=payload, timeout=15.0)
         except Exception:
             pass
 

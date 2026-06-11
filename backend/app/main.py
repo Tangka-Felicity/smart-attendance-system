@@ -19,10 +19,12 @@ from app.core.dependencies import get_redis
 from app.workers.anomaly_worker import run_anomaly_checks
 from app.workers.qr_worker import refresh_all_open_sessions
 from app.services.scheduler_service import start_scheduler
+from app.utils.http_client import HTTPClient
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await HTTPClient.start()
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         refresh_all_open_sessions,
@@ -44,6 +46,7 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        await HTTPClient.stop()
         scheduler.shutdown()
         redis = await get_redis()
         await redis.close()
