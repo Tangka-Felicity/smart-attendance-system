@@ -1,7 +1,6 @@
 import json
 from typing import Optional
 
-import httpx
 from google.oauth2 import service_account
 from google.auth.transport.requests import Request
 from sqlalchemy import select, func
@@ -9,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.models import Notification, NotificationType, User, AttendanceRecord
+from app.utils.http_client import HTTPClient
 
 
 class NotificationService:
@@ -52,8 +52,8 @@ class NotificationService:
                 }
             }
             url = cls.FCM_URL.format(project_id=settings.FCM_PROJECT_ID)
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                await client.post(url, headers=headers, json=payload)
+            client = await HTTPClient.get_client()
+            await client.post(url, headers=headers, json=payload)
         except Exception:
             pass
 
